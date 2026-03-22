@@ -225,7 +225,7 @@ class WiseDriveOBD2SDK private constructor(
             try {
                 // Stage 1: Initialize ELM327
                 reportProgress(StageId.INIT, "Initializing ELM327", StageStatus.RUNNING)
-                val initSteps = elm327.initialize()
+                elm327.initialize()
                 val protocol = elm327.getProtocol()
                 reportProgress(StageId.INIT, "Initializing ELM327", StageStatus.COMPLETED, protocol)
                 
@@ -246,12 +246,13 @@ class WiseDriveOBD2SDK private constructor(
                 
                 // Stage 3: MIL Status
                 reportProgress(StageId.MIL_STATUS, "Checking MIL status", StageStatus.RUNNING)
-                var milStatus = MILStatusResult(false, 0)
+                var milStatus: MILStatusResult
                 try {
                     milStatus = elm327.readMILStatus()
                     val detail = "MIL ${if (milStatus.milOn) "ON" else "OFF"}, ${milStatus.dtcCount} DTC(s) expected"
                     reportProgress(StageId.MIL_STATUS, "Checking MIL status", StageStatus.COMPLETED, detail)
                 } catch (e: Exception) {
+                    milStatus = MILStatusResult(false, 0)
                     reportProgress(StageId.MIL_STATUS, "Checking MIL status", StageStatus.ERROR, e.message)
                 }
                 

@@ -14,7 +14,11 @@ object DTCParser {
 
     /**
      * Parse OBD Mode 03/07/0A response
+     * @param rawResponse The raw response from ELM327
+     * @param mode The OBD mode (03, 07, or 0A)
+     * @param manufacturerId Optional manufacturer ID for enhanced DTC descriptions (reserved for future use)
      */
+    @Suppress("UNUSED_PARAMETER")
     fun parseOBDResponse(
         rawResponse: String,
         mode: String,
@@ -57,8 +61,9 @@ object DTCParser {
             }
             
             if (markerIndex >= 0 && markerIndex + 1 < tokens.size) {
-                // Next byte after marker is DTC count
-                val dtcCount = tokens[markerIndex + 1].toIntOrNull(16) ?: 0
+                // Next byte after marker is DTC count (captured for protocol compliance)
+                @Suppress("UNUSED_VARIABLE")
+                val dtcCountByte = tokens[markerIndex + 1].toIntOrNull(16) ?: 0
                 
                 ecuResponses[currentECU] = line
                 

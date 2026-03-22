@@ -57,7 +57,6 @@ object LiveDataParser {
      * Extract data bytes from OBD response
      */
     private fun extractDataBytes(pid: String, response: String): List<Int> {
-        val expectedResponse = "41 ${pid.uppercase()}"
         val tokens = response.split("\\s+".toRegex())
         
         // Strategy 1: Find "41 {PID}" marker

@@ -37,7 +37,6 @@ import kotlinx.coroutines.launch
  * WiseDrive OBD2 SDK Demo Application
  * Demonstrates full SDK functionality with polished Jetpack Compose UI
  */
-@OptIn(ExperimentalMaterial3Api::class)
 class MainActivity : ComponentActivity() {
 
     private lateinit var sdk: WiseDriveOBD2SDK
@@ -118,7 +117,6 @@ fun WiseDriveTheme(content: @Composable () -> Unit) {
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OBDScannerApp(sdk: WiseDriveOBD2SDK, requestPermissions: () -> Unit) {
     val scope = rememberCoroutineScope()
@@ -461,7 +459,7 @@ fun HomeScreen(
                         
                         Spacer(Modifier.height(12.dp))
                         
-                        // Manufacturer dropdown
+                        // Manufacturer dropdown - using stable DropdownMenu API
                         var expanded by remember { mutableStateOf(false) }
                         val manufacturers = listOf(
                             "hyundai" to "Hyundai",
@@ -476,28 +474,31 @@ fun HomeScreen(
                             "bmw" to "BMW"
                         )
                         
-                        ExposedDropdownMenuBox(
-                            expanded = expanded,
-                            onExpandedChange = { expanded = it }
-                        ) {
+                        Box(modifier = Modifier.fillMaxWidth()) {
                             OutlinedTextField(
                                 value = manufacturers.find { it.first == selectedManufacturer }?.second ?: selectedManufacturer,
                                 onValueChange = {},
                                 readOnly = true,
                                 label = { Text("Manufacturer") },
-                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                                trailingIcon = {
+                                    Icon(
+                                        imageVector = if (expanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
+                                        contentDescription = "Toggle dropdown"
+                                    )
+                                },
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .menuAnchor(),
+                                    .clickable { expanded = true },
                                 colors = OutlinedTextFieldDefaults.colors(
                                     focusedBorderColor = AccentCyan,
                                     unfocusedBorderColor = TextSecondary.copy(alpha = 0.3f)
                                 )
                             )
                             
-                            ExposedDropdownMenu(
+                            DropdownMenu(
                                 expanded = expanded,
-                                onDismissRequest = { expanded = false }
+                                onDismissRequest = { expanded = false },
+                                modifier = Modifier.fillMaxWidth(0.9f)
                             ) {
                                 manufacturers.forEach { (id, name) ->
                                     DropdownMenuItem(

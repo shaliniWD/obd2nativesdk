@@ -99,6 +99,7 @@ object IntegrityChecker {
             Build.BOOTLOADER.lowercase().contains("nox"),
             Build.HARDWARE.lowercase().contains("nox"),
             Build.PRODUCT.lowercase().contains("nox"),
+            @Suppress("DEPRECATION")
             Build.SERIAL.lowercase().contains("nox")
         )
         

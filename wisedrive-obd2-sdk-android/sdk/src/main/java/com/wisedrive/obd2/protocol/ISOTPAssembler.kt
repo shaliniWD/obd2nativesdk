@@ -57,7 +57,7 @@ object ISOTPAssembler {
         val result = mutableListOf<Int>()
         var expectedSequence = 1
         
-        for ((index, frame) in frames.withIndex()) {
+        for (frame in frames) {
             if (frame.isEmpty()) continue
             
             val firstByte = frame[0]

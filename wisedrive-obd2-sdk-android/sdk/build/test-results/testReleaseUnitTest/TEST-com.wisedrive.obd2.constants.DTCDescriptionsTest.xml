@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="com.wisedrive.obd2.constants.DTCDescriptionsTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-03-22T14:28:04" hostname="agent-env-9669a714-267c-4d78-aca9-6f1985c62200" time="0.007">
+<testsuite name="com.wisedrive.obd2.constants.DTCDescriptionsTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-03-22T14:41:47" hostname="agent-env-9669a714-267c-4d78-aca9-6f1985c62200" time="0.007">
   <properties/>
-  <testcase name="lookup common P codes" classname="com.wisedrive.obd2.constants.DTCDescriptionsTest" time="0.003"/>
+  <testcase name="lookup common P codes" classname="com.wisedrive.obd2.constants.DTCDescriptionsTest" time="0.005"/>
   <testcase name="manufacturer specific codes detection" classname="com.wisedrive.obd2.constants.DTCDescriptionsTest" time="0.0"/>
-  <testcase name="lookup U codes (network)" classname="com.wisedrive.obd2.constants.DTCDescriptionsTest" time="0.004"/>
+  <testcase name="lookup U codes (network)" classname="com.wisedrive.obd2.constants.DTCDescriptionsTest" time="0.001"/>
   <testcase name="severity assignment" classname="com.wisedrive.obd2.constants.DTCDescriptionsTest" time="0.0"/>
   <testcase name="get category name" classname="com.wisedrive.obd2.constants.DTCDescriptionsTest" time="0.0"/>
   <system-out><![CDATA[]]></system-out>
