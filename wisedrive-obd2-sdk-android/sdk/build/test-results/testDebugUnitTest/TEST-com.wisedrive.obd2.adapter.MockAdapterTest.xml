@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="com.wisedrive.obd2.adapter.MockAdapterTest" tests="11" skipped="0" failures="0" errors="0" timestamp="2026-03-22T13:45:05" hostname="agent-env-9669a714-267c-4d78-aca9-6f1985c62200" time="5.989">
+<testsuite name="com.wisedrive.obd2.adapter.MockAdapterTest" tests="11" skipped="0" failures="0" errors="0" timestamp="2026-03-22T13:53:19" hostname="agent-env-9669a714-267c-4d78-aca9-6f1985c62200" time="5.977">
   <properties/>
-  <testcase name="readWithoutConnectionThrows" classname="com.wisedrive.obd2.adapter.MockAdapterTest" time="0.002"/>
-  <testcase name="connectToValidDeviceSucceeds" classname="com.wisedrive.obd2.adapter.MockAdapterTest" time="0.501"/>
-  <testcase name="readReturnsMockResponseForOBDCommands" classname="com.wisedrive.obd2.adapter.MockAdapterTest" time="0.687"/>
+  <testcase name="readWithoutConnectionThrows" classname="com.wisedrive.obd2.adapter.MockAdapterTest" time="0.033"/>
+  <testcase name="connectToValidDeviceSucceeds" classname="com.wisedrive.obd2.adapter.MockAdapterTest" time="0.503"/>
+  <testcase name="readReturnsMockResponseForOBDCommands" classname="com.wisedrive.obd2.adapter.MockAdapterTest" time="0.707"/>
   <testcase name="connectToNonConnectableDeviceFails" classname="com.wisedrive.obd2.adapter.MockAdapterTest" time="0.501"/>
-  <testcase name="writeAndReadATCommand" classname="com.wisedrive.obd2.adapter.MockAdapterTest" time="1.038"/>
-  <testcase name="dataCallbackCanBeUnregistered" classname="com.wisedrive.obd2.adapter.MockAdapterTest" time="1.552"/>
-  <testcase name="connectToInvalidDeviceFails" classname="com.wisedrive.obd2.adapter.MockAdapterTest" time="0.501"/>
-  <testcase name="adapterIsAlwaysAvailable" classname="com.wisedrive.obd2.adapter.MockAdapterTest" time="0.001"/>
+  <testcase name="writeAndReadATCommand" classname="com.wisedrive.obd2.adapter.MockAdapterTest" time="1.05"/>
+  <testcase name="dataCallbackCanBeUnregistered" classname="com.wisedrive.obd2.adapter.MockAdapterTest" time="1.478"/>
+  <testcase name="connectToInvalidDeviceFails" classname="com.wisedrive.obd2.adapter.MockAdapterTest" time="0.5"/>
+  <testcase name="adapterIsAlwaysAvailable" classname="com.wisedrive.obd2.adapter.MockAdapterTest" time="0.0"/>
   <testcase name="scanReturnsMockDevices" classname="com.wisedrive.obd2.adapter.MockAdapterTest" time="0.602"/>
   <testcase name="writeWithoutConnectionThrows" classname="com.wisedrive.obd2.adapter.MockAdapterTest" time="0.001"/>
-  <testcase name="disconnectClearsConnectionState" classname="com.wisedrive.obd2.adapter.MockAdapterTest" time="0.602"/>
+  <testcase name="disconnectClearsConnectionState" classname="com.wisedrive.obd2.adapter.MockAdapterTest" time="0.601"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>

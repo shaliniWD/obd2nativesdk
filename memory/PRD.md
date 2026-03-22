@@ -69,8 +69,15 @@ Build a production-ready Android Native SDK (Kotlin) called `wisedrive-obd2-sdk-
 - **Total**: 52/52 unit tests passing
 
 ## Known Limitations
-1. **ARM64 Build Environment**: This preview environment runs on ARM64 Linux, which is incompatible with Android SDK build tools (AAPT2). Full APK builds require x86_64 environment.
+1. **ARM64 Build Environment**: This preview environment runs on ARM64 Linux, which is incompatible with Android SDK AAPT2 daemon mode. QEMU emulation partially works but daemon fails. Full APK builds require x86_64 environment.
 2. **Mock Mode Only**: Without physical hardware, testing is limited to MockAdapter.
+
+## CI/CD Setup
+GitHub Actions workflow (`.github/workflows/android-ci.yml`) provides:
+- **Build Job**: Compiles SDK AAR and Sample APK on x86_64 Ubuntu
+- **Instrumented Tests Job**: Runs UI and SDK integration tests on Android emulator
+- **Lint Job**: Android lint analysis
+- **Artifacts**: sdk-release.aar, sample-debug.apk, test-results
 
 ## API Reference
 
@@ -99,11 +106,12 @@ sdk.submitReport(encryptedResult)
 ```
 
 ## Backlog / Future Tasks
+- [ ] Push to GitHub and enable Actions for full APK build
+- [ ] Run instrumented tests in CI (MainActivityTest, SDKIntegrationTest)
 - [ ] ProGuard/R8 obfuscation verification
 - [ ] Real API integration (pending backend endpoints)
-- [ ] Full APK build on x86_64 environment
-- [ ] Android Instrumented Tests
-- [ ] CI/CD pipeline setup
+- [ ] Android Instrumented Tests on physical devices
+- [ ] CI/CD pipeline with release signing
 
 ## Security Considerations
 - All encryption keys fetched from backend at runtime

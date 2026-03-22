@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="com.wisedrive.obd2.security.SDKSecurityManagerTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-03-22T13:45:22" hostname="agent-env-9669a714-267c-4d78-aca9-6f1985c62200" time="0.001">
+<testsuite name="com.wisedrive.obd2.security.SDKSecurityManagerTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-03-22T13:53:39" hostname="agent-env-9669a714-267c-4d78-aca9-6f1985c62200" time="0.001">
   <properties/>
-  <testcase name="clear security state" classname="com.wisedrive.obd2.security.SDKSecurityManagerTest" time="0.0"/>
-  <testcase name="initialization with valid key" classname="com.wisedrive.obd2.security.SDKSecurityManagerTest" time="0.001"/>
+  <testcase name="clear security state" classname="com.wisedrive.obd2.security.SDKSecurityManagerTest" time="0.001"/>
+  <testcase name="initialization with valid key" classname="com.wisedrive.obd2.security.SDKSecurityManagerTest" time="0.0"/>
   <testcase name="key expiration check" classname="com.wisedrive.obd2.security.SDKSecurityManagerTest" time="0.0"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
