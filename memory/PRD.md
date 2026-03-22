@@ -59,11 +59,14 @@ Build a production-ready Android Native SDK (Kotlin) called `wisedrive-obd2-sdk-
 - [x] Fixed all compilation errors from bulk file generation
 
 ### Test Results (2025-03-22)
+- **MockAdapterTest**: 11/11 passed
+- **MockAPIClientTest**: 4/4 passed
+- **ISOTPAssemblerTest**: 9/9 passed
 - **DTCParserTest**: 10/10 passed
 - **LiveDataParserTest**: 10/10 passed
 - **SDKSecurityManagerTest**: 3/3 passed
 - **DTCDescriptionsTest**: 5/5 passed
-- **Total**: 28/28 unit tests passing
+- **Total**: 52/52 unit tests passing
 
 ## Known Limitations
 1. **ARM64 Build Environment**: This preview environment runs on ARM64 Linux, which is incompatible with Android SDK build tools (AAPT2). Full APK builds require x86_64 environment.
