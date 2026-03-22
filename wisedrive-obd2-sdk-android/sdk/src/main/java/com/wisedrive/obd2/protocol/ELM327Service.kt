@@ -5,6 +5,7 @@ import com.wisedrive.obd2.constants.ManufacturerECUs
 import com.wisedrive.obd2.models.*
 import com.wisedrive.obd2.util.Logger
 import kotlinx.coroutines.*
+
 import java.util.concurrent.ConcurrentLinkedQueue
 
 /**
@@ -13,6 +14,7 @@ import java.util.concurrent.ConcurrentLinkedQueue
  * 
  * Handles all AT commands, OBD modes, and manufacturer-specific UDS scanning
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 class ELM327Service(private val adapter: BluetoothAdapterInterface) {
 
     companion object {

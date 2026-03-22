@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="com.wisedrive.obd2.protocol.ISOTPAssemblerTest" tests="9" skipped="0" failures="0" errors="0" timestamp="2026-03-22T13:53:39" hostname="agent-env-9669a714-267c-4d78-aca9-6f1985c62200" time="0.002">
+<testsuite name="com.wisedrive.obd2.protocol.ISOTPAssemblerTest" tests="9" skipped="0" failures="0" errors="0" timestamp="2026-03-22T14:28:08" hostname="agent-env-9669a714-267c-4d78-aca9-6f1985c62200" time="0.002">
   <properties/>
   <testcase name="get message length from single frame" classname="com.wisedrive.obd2.protocol.ISOTPAssemblerTest" time="0.001"/>
   <testcase name="handle response with searching message" classname="com.wisedrive.obd2.protocol.ISOTPAssemblerTest" time="0.0"/>
   <testcase name="handle response with bus init message" classname="com.wisedrive.obd2.protocol.ISOTPAssemblerTest" time="0.0"/>
   <testcase name="handle empty response" classname="com.wisedrive.obd2.protocol.ISOTPAssemblerTest" time="0.0"/>
-  <testcase name="parse multi-frame VIN response" classname="com.wisedrive.obd2.protocol.ISOTPAssemblerTest" time="0.001"/>
+  <testcase name="parse multi-frame VIN response" classname="com.wisedrive.obd2.protocol.ISOTPAssemblerTest" time="0.0"/>
   <testcase name="parse single frame message" classname="com.wisedrive.obd2.protocol.ISOTPAssemblerTest" time="0.0"/>
   <testcase name="detect multi-frame with first frame indicator" classname="com.wisedrive.obd2.protocol.ISOTPAssemblerTest" time="0.0"/>
   <testcase name="detect consecutive frame markers" classname="com.wisedrive.obd2.protocol.ISOTPAssemblerTest" time="0.0"/>

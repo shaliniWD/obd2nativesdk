@@ -37,6 +37,7 @@ import kotlinx.coroutines.launch
  * WiseDrive OBD2 SDK Demo Application
  * Demonstrates full SDK functionality with polished Jetpack Compose UI
  */
+@OptIn(ExperimentalMaterial3Api::class)
 class MainActivity : ComponentActivity() {
 
     private lateinit var sdk: WiseDriveOBD2SDK
