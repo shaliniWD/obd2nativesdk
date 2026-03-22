@@ -1,0 +1,14 @@
+#!/bin/sh
+##############################################################################
+# Gradle start up script for UN*X
+##############################################################################
+APP_NAME="Gradle"
+APP_BASE_NAME=$(basename "$0")
+CLASSPATH=$APP_HOME/gradle/wrapper/gradle-wrapper.jar
+JAVA_HOME="${JAVA_HOME:-/usr/lib/jvm/java-17-openjdk-arm64}"
+export ANDROID_HOME=/opt/android-sdk
+export ANDROID_SDK_ROOT=/opt/android-sdk
+export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools
+exec "$JAVA_HOME/bin/java" -Xmx2048m -Dfile.encoding=UTF-8 \
+    -classpath "$CLASSPATH" \
+    org.gradle.wrapper.GradleWrapperMain "$@"

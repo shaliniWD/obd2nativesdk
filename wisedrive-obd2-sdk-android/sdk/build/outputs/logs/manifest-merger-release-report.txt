@@ -1,0 +1,64 @@
+-- Merging decision tree log ---
+manifest
+ADDED from /app/wisedrive-obd2-sdk-android/sdk/src/main/AndroidManifest.xml:2:1-24:12
+INJECTED from /app/wisedrive-obd2-sdk-android/sdk/src/main/AndroidManifest.xml:2:1-24:12
+	package
+		INJECTED from /app/wisedrive-obd2-sdk-android/sdk/src/main/AndroidManifest.xml
+	xmlns:android
+		ADDED from /app/wisedrive-obd2-sdk-android/sdk/src/main/AndroidManifest.xml:2:11-69
+uses-permission#android.permission.BLUETOOTH
+ADDED from /app/wisedrive-obd2-sdk-android/sdk/src/main/AndroidManifest.xml:5:5-95
+	android:maxSdkVersion
+		ADDED from /app/wisedrive-obd2-sdk-android/sdk/src/main/AndroidManifest.xml:5:66-92
+	android:name
+		ADDED from /app/wisedrive-obd2-sdk-android/sdk/src/main/AndroidManifest.xml:5:22-65
+uses-permission#android.permission.BLUETOOTH_ADMIN
+ADDED from /app/wisedrive-obd2-sdk-android/sdk/src/main/AndroidManifest.xml:6:5-101
+	android:maxSdkVersion
+		ADDED from /app/wisedrive-obd2-sdk-android/sdk/src/main/AndroidManifest.xml:6:72-98
+	android:name
+		ADDED from /app/wisedrive-obd2-sdk-android/sdk/src/main/AndroidManifest.xml:6:22-71
+uses-permission#android.permission.BLUETOOTH_SCAN
+ADDED from /app/wisedrive-obd2-sdk-android/sdk/src/main/AndroidManifest.xml:9:5-73
+	android:name
+		ADDED from /app/wisedrive-obd2-sdk-android/sdk/src/main/AndroidManifest.xml:9:22-70
+uses-permission#android.permission.BLUETOOTH_CONNECT
+ADDED from /app/wisedrive-obd2-sdk-android/sdk/src/main/AndroidManifest.xml:10:5-76
+	android:name
+		ADDED from /app/wisedrive-obd2-sdk-android/sdk/src/main/AndroidManifest.xml:10:22-73
+uses-permission#android.permission.ACCESS_FINE_LOCATION
+ADDED from /app/wisedrive-obd2-sdk-android/sdk/src/main/AndroidManifest.xml:13:5-79
+	android:name
+		ADDED from /app/wisedrive-obd2-sdk-android/sdk/src/main/AndroidManifest.xml:13:22-76
+uses-permission#android.permission.ACCESS_COARSE_LOCATION
+ADDED from /app/wisedrive-obd2-sdk-android/sdk/src/main/AndroidManifest.xml:14:5-81
+	android:name
+		ADDED from /app/wisedrive-obd2-sdk-android/sdk/src/main/AndroidManifest.xml:14:22-78
+uses-permission#android.permission.INTERNET
+ADDED from /app/wisedrive-obd2-sdk-android/sdk/src/main/AndroidManifest.xml:17:5-67
+	android:name
+		ADDED from /app/wisedrive-obd2-sdk-android/sdk/src/main/AndroidManifest.xml:17:22-64
+uses-permission#android.permission.ACCESS_NETWORK_STATE
+ADDED from /app/wisedrive-obd2-sdk-android/sdk/src/main/AndroidManifest.xml:18:5-79
+	android:name
+		ADDED from /app/wisedrive-obd2-sdk-android/sdk/src/main/AndroidManifest.xml:18:22-76
+uses-feature#android.hardware.bluetooth
+ADDED from /app/wisedrive-obd2-sdk-android/sdk/src/main/AndroidManifest.xml:21:5-87
+	android:required
+		ADDED from /app/wisedrive-obd2-sdk-android/sdk/src/main/AndroidManifest.xml:21:61-84
+	android:name
+		ADDED from /app/wisedrive-obd2-sdk-android/sdk/src/main/AndroidManifest.xml:21:19-60
+uses-feature#android.hardware.bluetooth_le
+ADDED from /app/wisedrive-obd2-sdk-android/sdk/src/main/AndroidManifest.xml:22:5-91
+	android:required
+		ADDED from /app/wisedrive-obd2-sdk-android/sdk/src/main/AndroidManifest.xml:22:64-88
+	android:name
+		ADDED from /app/wisedrive-obd2-sdk-android/sdk/src/main/AndroidManifest.xml:22:19-63
+uses-sdk
+INJECTED from /app/wisedrive-obd2-sdk-android/sdk/src/main/AndroidManifest.xml reason: use-sdk injection requested
+INJECTED from /app/wisedrive-obd2-sdk-android/sdk/src/main/AndroidManifest.xml
+INJECTED from /app/wisedrive-obd2-sdk-android/sdk/src/main/AndroidManifest.xml
+	android:targetSdkVersion
+		INJECTED from /app/wisedrive-obd2-sdk-android/sdk/src/main/AndroidManifest.xml
+	android:minSdkVersion
+		INJECTED from /app/wisedrive-obd2-sdk-android/sdk/src/main/AndroidManifest.xml
