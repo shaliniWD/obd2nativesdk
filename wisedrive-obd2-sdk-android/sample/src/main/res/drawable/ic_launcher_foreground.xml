@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group android:scaleX="0.5"
+        android:scaleY="0.5"
+        android:translateX="27"
+        android:translateY="27">
+        <!-- Car outline -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M54,24C42,24 32,32 28,44L20,44C17.8,44 16,45.8 16,48L16,56C16,58.2 17.8,60 20,60L24,60L24,76C24,78.2 25.8,80 28,80L36,80C38.2,80 40,78.2 40,76L40,72L68,72L68,76C68,78.2 69.8,80 72,80L80,80C82.2,80 84,78.2 84,76L84,60L88,60C90.2,60 92,58.2 92,56L92,48C92,45.8 90.2,44 88,44L80,44C76,32 66,24 54,24ZM36,64C32.7,64 30,61.3 30,58C30,54.7 32.7,52 36,52C39.3,52 42,54.7 42,58C42,61.3 39.3,64 36,64ZM72,64C68.7,64 66,61.3 66,58C66,54.7 68.7,52 72,52C75.3,52 78,54.7 78,58C78,61.3 75.3,64 72,64Z"/>
+        <!-- OBD connector -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M44,36L64,36L64,44L44,44Z"/>
+        <path
+            android:fillColor="#1E88E5"
+            android:pathData="M47,38L49,38L49,42L47,42Z"/>
+        <path
+            android:fillColor="#1E88E5"
+            android:pathData="M52,38L54,38L54,42L52,42Z"/>
+        <path
+            android:fillColor="#1E88E5"
+            android:pathData="M57,38L59,38L59,42L57,42Z"/>
+    </group>
+</vector>
