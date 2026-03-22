@@ -2,9 +2,10 @@ name: Android CI
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main, master, develop ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, master ]
+  workflow_dispatch:  # Allows manual trigger from Actions tab
 
 jobs:
   build:
