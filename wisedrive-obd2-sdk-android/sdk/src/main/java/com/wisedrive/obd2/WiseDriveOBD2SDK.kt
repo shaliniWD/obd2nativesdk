@@ -246,13 +246,11 @@ class WiseDriveOBD2SDK private constructor(
                 
                 // Stage 3: MIL Status
                 reportProgress(StageId.MIL_STATUS, "Checking MIL status", StageStatus.RUNNING)
-                var milStatus: MILStatusResult
                 try {
-                    milStatus = elm327.readMILStatus()
+                    val milStatus = elm327.readMILStatus()
                     val detail = "MIL ${if (milStatus.milOn) "ON" else "OFF"}, ${milStatus.dtcCount} DTC(s) expected"
                     reportProgress(StageId.MIL_STATUS, "Checking MIL status", StageStatus.COMPLETED, detail)
                 } catch (e: Exception) {
-                    milStatus = MILStatusResult(false, 0)
                     reportProgress(StageId.MIL_STATUS, "Checking MIL status", StageStatus.ERROR, e.message)
                 }
                 

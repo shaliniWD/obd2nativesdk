@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalMaterial3Api::class)
+
 package com.wisedrive.obd2.sample
 
 import android.Manifest
