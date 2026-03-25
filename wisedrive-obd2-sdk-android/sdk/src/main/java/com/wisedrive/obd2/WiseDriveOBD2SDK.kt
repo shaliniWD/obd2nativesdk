@@ -130,7 +130,7 @@ class WiseDriveOBD2SDK private constructor(
         
         if (initialized) {
             isInitialized = true
-            wiseDriveAnalytics = WiseDriveAnalytics(securityManager)
+            wiseDriveAnalytics = WiseDriveAnalytics()
             Logger.i(TAG, "SDK initialized successfully")
         }
         

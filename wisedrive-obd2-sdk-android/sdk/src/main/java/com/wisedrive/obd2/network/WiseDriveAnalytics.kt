@@ -2,8 +2,6 @@ package com.wisedrive.obd2.network
 
 import com.google.gson.Gson
 import com.wisedrive.obd2.models.APIPayload
-import com.wisedrive.obd2.models.EncryptedPayload
-import com.wisedrive.obd2.security.SDKSecurityManager
 import com.wisedrive.obd2.util.Logger
 import kotlinx.coroutines.*
 import okhttp3.MediaType.Companion.toMediaType
@@ -16,12 +14,10 @@ import java.util.concurrent.atomic.AtomicBoolean
 /**
  * WiseDrive Analytics - Internal analytics endpoint handler
  * 
- * Sends encrypted scan data to WiseDrive analytics endpoint.
+ * Sends scan data to WiseDrive analytics endpoint (plain JSON).
  * Implements silent retry mechanism until successful or submitReport() is called.
  */
-internal class WiseDriveAnalytics(
-    private val securityManager: SDKSecurityManager
-) {
+internal class WiseDriveAnalytics {
     companion object {
         private const val TAG = "WiseDriveAnalytics"
         private const val ANALYTICS_ENDPOINT = "http://164.52.213.170:82/apiv2/webhook/obdreport/wisedrive"
@@ -40,10 +36,11 @@ internal class WiseDriveAnalytics(
 
     private var retryJob: Job? = null
     private val isSubmitted = AtomicBoolean(false)
-    private var pendingPayload: EncryptedPayload? = null
+    private var pendingPayload: APIPayload? = null
+    private var lastResponse: String? = null
 
     /**
-     * Send analytics data to WiseDrive endpoint (encrypted)
+     * Send analytics data to WiseDrive endpoint (plain JSON)
      * Runs in background with silent retry until success or submitReport() called
      * 
      * @param apiPayload The scan data payload
@@ -51,20 +48,17 @@ internal class WiseDriveAnalytics(
      */
     fun sendAnalytics(apiPayload: APIPayload, scope: CoroutineScope) {
         isSubmitted.set(false)
-        
-        // Encrypt the payload
-        val payloadJson = gson.toJson(apiPayload)
-        val encryptedPayload = securityManager.encryptReport(payloadJson)
-        pendingPayload = encryptedPayload
+        pendingPayload = apiPayload
+        lastResponse = null
         
         // Start background retry
         retryJob = scope.launch(Dispatchers.IO) {
             var attempt = 0
-            var delay = INITIAL_RETRY_DELAY_MS
+            var delayMs = INITIAL_RETRY_DELAY_MS
             
             while (!isSubmitted.get() && attempt < MAX_RETRIES) {
                 try {
-                    val success = sendToEndpoint(encryptedPayload)
+                    val success = sendToEndpoint(apiPayload)
                     if (success) {
                         Logger.i(TAG, "Analytics sent successfully on attempt ${attempt + 1}")
                         isSubmitted.set(true)
@@ -73,12 +67,13 @@ internal class WiseDriveAnalytics(
                     }
                 } catch (e: Exception) {
                     Logger.w(TAG, "Analytics send attempt ${attempt + 1} failed: ${e.message}")
+                    lastResponse = "Error: ${e.message}"
                 }
                 
                 attempt++
                 if (!isSubmitted.get() && attempt < MAX_RETRIES) {
-                    delay(delay)
-                    delay = minOf(delay * 2, MAX_RETRY_DELAY_MS) // Exponential backoff
+                    delay(delayMs)
+                    delayMs = minOf(delayMs * 2, MAX_RETRY_DELAY_MS) // Exponential backoff
                 }
             }
             
@@ -111,6 +106,7 @@ internal class WiseDriveAnalytics(
                 success
             } catch (e: Exception) {
                 Logger.e(TAG, "Final analytics send failed: ${e.message}")
+                lastResponse = "Error: ${e.message}"
                 false
             }
         }
@@ -119,10 +115,13 @@ internal class WiseDriveAnalytics(
     }
 
     /**
-     * Send encrypted payload to WiseDrive analytics endpoint
+     * Send plain JSON payload to WiseDrive analytics endpoint
      */
-    private fun sendToEndpoint(encryptedPayload: EncryptedPayload): Boolean {
-        val jsonBody = gson.toJson(encryptedPayload)
+    private fun sendToEndpoint(apiPayload: APIPayload): Boolean {
+        val jsonBody = gson.toJson(apiPayload)
+        
+        Logger.d(TAG, "Sending analytics to: $ANALYTICS_ENDPOINT")
+        Logger.d(TAG, "Payload: $jsonBody")
         
         val request = Request.Builder()
             .url(ANALYTICS_ENDPOINT)
@@ -132,12 +131,14 @@ internal class WiseDriveAnalytics(
             .build()
 
         val response = httpClient.newCall(request).execute()
+        val responseBody = response.body?.string() ?: ""
+        lastResponse = responseBody
         
-        return response.isSuccessful.also {
-            if (it) {
-                Logger.d(TAG, "Analytics endpoint returned success")
+        return response.isSuccessful.also { success ->
+            if (success) {
+                Logger.i(TAG, "Analytics endpoint returned success: $responseBody")
             } else {
-                Logger.w(TAG, "Analytics endpoint returned: ${response.code}")
+                Logger.w(TAG, "Analytics endpoint returned ${response.code}: $responseBody")
             }
         }
     }
@@ -146,6 +147,11 @@ internal class WiseDriveAnalytics(
      * Check if analytics has been successfully submitted
      */
     fun isAnalyticsSubmitted(): Boolean = isSubmitted.get()
+
+    /**
+     * Get the last response from the endpoint
+     */
+    fun getLastResponse(): String? = lastResponse
 
     /**
      * Cancel any pending operations

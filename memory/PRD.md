@@ -62,10 +62,14 @@ Build a production-ready Android Native SDK (Kotlin) called `wisedrive-obd2-sdk-
 - [x] **Registration Number Mandatory**: Added `registrationNumber` as required field in `ScanOptions`
 - [x] **Dual Data Flow**: 
   - Client apps receive plain `ScanReport` JSON
-  - WiseDrive analytics receives encrypted data (AES-256-GCM)
+  - WiseDrive analytics receives plain JSON (endpoint tested successfully)
 - [x] **WiseDrive Analytics**: New `WiseDriveAnalytics` class for automatic background submission
   - Endpoint: `http://164.52.213.170:82/apiv2/webhook/obdreport/wisedrive`
+  - Auth: Basic (prasad:prasad@123)
   - Silent retry with exponential backoff until `submitReport()` is called
+- [x] **Endpoint Tested**: 
+  - ✅ Valid tracking ID (ORD6894331): Returns `{"result": "SUCCESS"}`
+  - ✅ Invalid tracking ID: Returns 500 (not in WiseDrive system)
 - [x] **Updated Sample App**: 
   - Added Registration Number input field (mandatory)
   - Updated to display plain `ScanReport` instead of encrypted payload
