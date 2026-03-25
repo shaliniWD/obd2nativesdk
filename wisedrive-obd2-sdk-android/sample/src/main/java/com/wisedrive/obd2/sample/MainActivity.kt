@@ -12,11 +12,14 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
@@ -28,20 +31,26 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.wisedrive.obd2.WiseDriveOBD2SDK
 import com.wisedrive.obd2.models.*
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.*
 
 /**
  * WiseDrive OBD2 SDK Demo Application
  * Demonstrates full SDK functionality with polished Jetpack Compose UI
+ * Includes logging and mock mode for testing
  */
 class MainActivity : ComponentActivity() {
 
-    private lateinit var sdk: WiseDriveOBD2SDK
+    private var sdk: WiseDriveOBD2SDK? = null
     
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -57,17 +66,18 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        // Initialize SDK with mock adapter for demo
-        sdk = WiseDriveOBD2SDK.initialize(this, useMock = true)
-        sdk.setLoggingEnabled(true)
-        
         setContent {
             WiseDriveTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = DarkBackground
                 ) {
-                    OBDScannerApp(sdk, ::requestPermissions)
+                    OBDScannerApp(
+                        context = this,
+                        getSdk = { sdk },
+                        setSdk = { sdk = it },
+                        requestPermissions = ::requestPermissions
+                    )
                 }
             }
         }
@@ -92,7 +102,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        sdk.cleanup()
+        sdk?.cleanup()
     }
 }
 
@@ -104,8 +114,10 @@ val AccentCyan = Color(0xFF00D9FF)
 val AccentGreen = Color(0xFF00F5A0)
 val AccentRed = Color(0xFFFF4757)
 val AccentOrange = Color(0xFFFF9F43)
+val AccentPurple = Color(0xFF9B59B6)
 val TextPrimary = Color(0xFFE8E8E8)
 val TextSecondary = Color(0xFF9CA3AF)
+val CodeBackground = Color(0xFF0D1117)
 
 @Composable
 fun WiseDriveTheme(content: @Composable () -> Unit) {
@@ -124,8 +136,22 @@ fun WiseDriveTheme(content: @Composable () -> Unit) {
     )
 }
 
+data class LogEntry(
+    val timestamp: String,
+    val type: LogType,
+    val message: String,
+    val details: String? = null
+)
+
+enum class LogType { INFO, SUCCESS, ERROR, DATA }
+
 @Composable
-fun OBDScannerApp(sdk: WiseDriveOBD2SDK, requestPermissions: () -> Unit) {
+fun OBDScannerApp(
+    context: ComponentActivity,
+    getSdk: () -> WiseDriveOBD2SDK?,
+    setSdk: (WiseDriveOBD2SDK) -> Unit,
+    requestPermissions: () -> Unit
+) {
     val scope = rememberCoroutineScope()
     
     // State
@@ -142,7 +168,19 @@ fun OBDScannerApp(sdk: WiseDriveOBD2SDK, requestPermissions: () -> Unit) {
     
     // Configuration
     var selectedManufacturer by remember { mutableStateOf("hyundai") }
-    var registrationNumber by remember { mutableStateOf("") }
+    var registrationNumber by remember { mutableStateOf("ORD6894331") } // Default to test value
+    var useMockMode by remember { mutableStateOf(true) }
+    
+    // Logs
+    var logs by remember { mutableStateOf(listOf<LogEntry>()) }
+    var analyticsPayloadJson by remember { mutableStateOf<String?>(null) }
+    var analyticsResponse by remember { mutableStateOf<String?>(null) }
+    var analyticsSubmitted by remember { mutableStateOf(false) }
+    
+    fun addLog(type: LogType, message: String, details: String? = null) {
+        val timestamp = SimpleDateFormat("HH:mm:ss.SSS", Locale.US).format(Date())
+        logs = logs + LogEntry(timestamp, type, message, details)
+    }
 
     Column(
         modifier = Modifier
@@ -164,11 +202,18 @@ fun OBDScannerApp(sdk: WiseDriveOBD2SDK, requestPermissions: () -> Unit) {
                         modifier = Modifier.size(28.dp)
                     )
                     Spacer(Modifier.width(12.dp))
-                    Text(
-                        "WiseDrive OBD2",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 20.sp
-                    )
+                    Column {
+                        Text(
+                            "WiseDrive OBD2",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp
+                        )
+                        Text(
+                            if (useMockMode) "Mock Mode" else "Live Mode",
+                            fontSize = 10.sp,
+                            color = if (useMockMode) AccentOrange else AccentGreen
+                        )
+                    }
                 }
             },
             colors = TopAppBarDefaults.topAppBarColors(
@@ -182,6 +227,15 @@ fun OBDScannerApp(sdk: WiseDriveOBD2SDK, requestPermissions: () -> Unit) {
                         icon = Icons.Default.Bluetooth
                     )
                 }
+                
+                // Logs button
+                IconButton(onClick = { currentScreen = Screen.LOGS }) {
+                    Badge(
+                        containerColor = if (logs.isNotEmpty()) AccentCyan else Color.Transparent
+                    ) {
+                        Icon(Icons.Default.Terminal, "Logs", tint = TextPrimary)
+                    }
+                }
             }
         )
 
@@ -192,13 +246,47 @@ fun OBDScannerApp(sdk: WiseDriveOBD2SDK, requestPermissions: () -> Unit) {
                     isInitialized = isInitialized,
                     isConnected = isConnected,
                     connectedDevice = connectedDevice,
+                    useMockMode = useMockMode,
+                    onMockModeChange = { newValue ->
+                        if (!isInitialized) {
+                            useMockMode = newValue
+                            addLog(LogType.INFO, "Mock mode ${if (newValue) "enabled" else "disabled"}")
+                        }
+                    },
                     onRequestPermissions = requestPermissions,
                     onInitialize = {
                         scope.launch {
                             try {
-                                isInitialized = sdk.initializeWithKey("demo-key")
+                                addLog(LogType.INFO, "Initializing SDK (mock=$useMockMode)...")
+                                val newSdk = WiseDriveOBD2SDK.initialize(context, useMock = useMockMode)
+                                
+                                // Set up analytics callbacks
+                                newSdk.setOnAnalyticsPayloadPrepared { json ->
+                                    analyticsPayloadJson = json
+                                    addLog(LogType.DATA, "Analytics payload prepared", json.take(200) + "...")
+                                }
+                                
+                                newSdk.setOnAnalyticsSubmissionResult { success, response ->
+                                    analyticsSubmitted = success
+                                    analyticsResponse = response
+                                    if (success) {
+                                        addLog(LogType.SUCCESS, "Analytics submitted successfully", response)
+                                    } else {
+                                        addLog(LogType.ERROR, "Analytics submission failed", response)
+                                    }
+                                }
+                                
+                                val result = newSdk.initializeWithKey("demo-key")
+                                if (result) {
+                                    setSdk(newSdk)
+                                    isInitialized = true
+                                    addLog(LogType.SUCCESS, "SDK initialized successfully")
+                                } else {
+                                    addLog(LogType.ERROR, "SDK initialization failed")
+                                }
                             } catch (e: Exception) {
                                 errorMessage = e.message
+                                addLog(LogType.ERROR, "Initialization error", e.message)
                             }
                         }
                     },
@@ -207,17 +295,19 @@ fun OBDScannerApp(sdk: WiseDriveOBD2SDK, requestPermissions: () -> Unit) {
                         scope.launch {
                             devices = emptyList()
                             isScanning = true
-                            sdk.discoverDevices(
+                            addLog(LogType.INFO, "Starting device discovery...")
+                            getSdk()?.discoverDevices(
                                 onDeviceFound = { device ->
                                     devices = devices + device
+                                    addLog(LogType.INFO, "Device found: ${device.name ?: device.id}")
                                 },
                                 timeoutMs = 8000
                             )
                             isScanning = false
+                            addLog(LogType.INFO, "Discovery completed. Found ${devices.size} devices")
                         }
                     },
                     onStartScan = {
-                        // Validate registration number
                         if (registrationNumber.isBlank()) {
                             errorMessage = "Registration number is required"
                             return@HomeScreen
@@ -226,22 +316,30 @@ fun OBDScannerApp(sdk: WiseDriveOBD2SDK, requestPermissions: () -> Unit) {
                         currentScreen = Screen.SCANNING
                         scanStages = emptyList()
                         scanResult = null
+                        analyticsPayloadJson = null
+                        analyticsResponse = null
+                        analyticsSubmitted = false
                         isScanRunning = true
+                        
+                        addLog(LogType.INFO, "Starting scan for: $registrationNumber")
                         
                         scope.launch {
                             try {
-                                val result = sdk.runFullScan(ScanOptions(
+                                val result = getSdk()?.runFullScan(ScanOptions(
                                     registrationNumber = registrationNumber,
                                     manufacturer = selectedManufacturer,
                                     year = 2022,
                                     onProgress = { stage ->
                                         scanStages = scanStages.filterNot { it.id == stage.id } + stage
+                                        addLog(LogType.INFO, "Stage: ${stage.label} - ${stage.status}")
                                     }
                                 ))
                                 scanResult = result
+                                addLog(LogType.SUCCESS, "Scan completed", "DTCs: ${result?.summary?.totalDTCs ?: 0}")
                                 currentScreen = Screen.RESULTS
                             } catch (e: Exception) {
                                 errorMessage = e.message
+                                addLog(LogType.ERROR, "Scan failed", e.message)
                                 currentScreen = Screen.HOME
                             } finally {
                                 isScanRunning = false
@@ -250,9 +348,10 @@ fun OBDScannerApp(sdk: WiseDriveOBD2SDK, requestPermissions: () -> Unit) {
                     },
                     onDisconnect = {
                         scope.launch {
-                            sdk.disconnect()
+                            getSdk()?.disconnect()
                             isConnected = false
                             connectedDevice = null
+                            addLog(LogType.INFO, "Disconnected")
                         }
                     },
                     selectedManufacturer = selectedManufacturer,
@@ -269,12 +368,15 @@ fun OBDScannerApp(sdk: WiseDriveOBD2SDK, requestPermissions: () -> Unit) {
                     onDeviceSelected = { device ->
                         scope.launch {
                             try {
-                                sdk.connect(device.id)
+                                addLog(LogType.INFO, "Connecting to ${device.name ?: device.id}...")
+                                getSdk()?.connect(device.id)
                                 isConnected = true
                                 connectedDevice = device
+                                addLog(LogType.SUCCESS, "Connected successfully")
                                 currentScreen = Screen.HOME
                             } catch (e: Exception) {
                                 errorMessage = e.message
+                                addLog(LogType.ERROR, "Connection failed", e.message)
                             }
                         }
                     },
@@ -286,7 +388,8 @@ fun OBDScannerApp(sdk: WiseDriveOBD2SDK, requestPermissions: () -> Unit) {
                 ScanningScreen(
                     stages = scanStages,
                     onCancel = {
-                        sdk.stopScan()
+                        getSdk()?.stopScan()
+                        addLog(LogType.INFO, "Scan cancelled by user")
                         currentScreen = Screen.HOME
                     }
                 )
@@ -295,19 +398,44 @@ fun OBDScannerApp(sdk: WiseDriveOBD2SDK, requestPermissions: () -> Unit) {
             Screen.RESULTS -> {
                 ResultsScreen(
                     scanReport = scanResult,
+                    analyticsPayloadJson = analyticsPayloadJson,
+                    analyticsResponse = analyticsResponse,
+                    analyticsSubmitted = analyticsSubmitted,
+                    isMockMode = useMockMode,
                     onSubmit = {
                         scope.launch {
                             try {
+                                addLog(LogType.INFO, "Submitting report...")
                                 scanResult?.let { result ->
-                                    val success = sdk.submitReport(result)
-                                    errorMessage = if (success) "Report submitted successfully!" else "Failed to submit report"
+                                    val success = getSdk()?.submitReport(result) ?: false
+                                    if (success) {
+                                        addLog(LogType.SUCCESS, "Report submitted")
+                                        errorMessage = "Report submitted successfully!"
+                                    } else {
+                                        addLog(LogType.ERROR, "Report submission failed")
+                                        errorMessage = "Failed to submit report"
+                                    }
                                 }
                             } catch (e: Exception) {
                                 errorMessage = e.message
+                                addLog(LogType.ERROR, "Submit error", e.message)
                             }
                         }
                     },
+                    onViewLogs = { currentScreen = Screen.LOGS },
                     onNewScan = { currentScreen = Screen.HOME }
+                )
+            }
+            
+            Screen.LOGS -> {
+                LogsScreen(
+                    logs = logs,
+                    analyticsPayloadJson = analyticsPayloadJson,
+                    onClear = { 
+                        logs = emptyList()
+                        addLog(LogType.INFO, "Logs cleared")
+                    },
+                    onBack = { currentScreen = Screen.HOME }
                 )
             }
         }
@@ -334,6 +462,8 @@ fun HomeScreen(
     isInitialized: Boolean,
     isConnected: Boolean,
     connectedDevice: BLEDevice?,
+    useMockMode: Boolean,
+    onMockModeChange: (Boolean) -> Unit,
     onRequestPermissions: () -> Unit,
     onInitialize: () -> Unit,
     onDiscoverDevices: () -> Unit,
@@ -350,6 +480,51 @@ fun HomeScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        // Mock Mode Toggle Card
+        item {
+            GlassCard {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column {
+                        Text(
+                            "Test Mode",
+                            fontWeight = FontWeight.Bold,
+                            color = TextPrimary
+                        )
+                        Text(
+                            if (useMockMode) "Using mock data (no real endpoint call)" 
+                            else "Live mode (real API calls)",
+                            fontSize = 12.sp,
+                            color = if (useMockMode) AccentOrange else AccentGreen
+                        )
+                    }
+                    Switch(
+                        checked = useMockMode,
+                        onCheckedChange = onMockModeChange,
+                        enabled = !isInitialized,
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = AccentOrange,
+                            checkedTrackColor = AccentOrange.copy(alpha = 0.5f)
+                        )
+                    )
+                }
+                
+                if (isInitialized) {
+                    Text(
+                        "Restart app to change mode",
+                        fontSize = 10.sp,
+                        color = TextSecondary,
+                        modifier = Modifier.padding(start = 16.dp, bottom = 8.dp)
+                    )
+                }
+            }
+        }
+        
         // Status Card
         item {
             GlassCard {
@@ -373,6 +548,12 @@ fun HomeScreen(
                         value = if (isConnected) connectedDevice?.name ?: "Yes" else "No",
                         icon = if (isConnected) Icons.Default.Bluetooth else Icons.Default.BluetoothDisabled,
                         color = if (isConnected) AccentCyan else TextSecondary
+                    )
+                    StatusRow(
+                        label = "Mode",
+                        value = if (useMockMode) "Mock" else "Live",
+                        icon = if (useMockMode) Icons.Default.Science else Icons.Default.Cloud,
+                        color = if (useMockMode) AccentOrange else AccentGreen
                     )
                 }
             }
@@ -464,13 +645,20 @@ fun HomeScreen(
                         OutlinedTextField(
                             value = registrationNumber,
                             onValueChange = onRegistrationNumberChange,
-                            label = { Text("Registration Number *") },
-                            placeholder = { Text("e.g., MH12AB1234") },
+                            label = { Text("Registration/Tracking ID *") },
+                            placeholder = { Text("e.g., ORD6894331") },
                             modifier = Modifier.fillMaxWidth(),
                             isError = registrationNumber.isBlank(),
                             supportingText = {
-                                if (registrationNumber.isBlank()) {
-                                    Text("Required", color = AccentRed)
+                                Column {
+                                    if (registrationNumber.isBlank()) {
+                                        Text("Required", color = AccentRed)
+                                    }
+                                    Text(
+                                        "Use ORD6894331 for testing",
+                                        fontSize = 10.sp,
+                                        color = AccentCyan
+                                    )
                                 }
                             },
                             colors = OutlinedTextFieldDefaults.colors(
@@ -573,7 +761,6 @@ fun DevicesScreen(
     onBack: () -> Unit
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
-        // Back button
         IconButton(onClick = onBack) {
             Icon(Icons.Default.ArrowBack, "Back", tint = TextPrimary)
         }
@@ -634,26 +821,14 @@ fun DeviceCard(device: BLEDevice, onClick: () -> Unit) {
                     .background(AccentBlue),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    Icons.Default.Bluetooth,
-                    contentDescription = null,
-                    tint = AccentCyan
-                )
+                Icon(Icons.Default.Bluetooth, contentDescription = null, tint = AccentCyan)
             }
             
             Spacer(Modifier.width(16.dp))
             
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    device.name ?: "Unknown Device",
-                    fontWeight = FontWeight.Bold,
-                    color = TextPrimary
-                )
-                Text(
-                    device.id,
-                    fontSize = 12.sp,
-                    color = TextSecondary
-                )
+                Text(device.name ?: "Unknown Device", fontWeight = FontWeight.Bold, color = TextPrimary)
+                Text(device.id, fontSize = 12.sp, color = TextSecondary)
             }
             
             Column(horizontalAlignment = Alignment.End) {
@@ -663,11 +838,7 @@ fun DeviceCard(device: BLEDevice, onClick: () -> Unit) {
                     color = if (device.rssi > -60) AccentGreen else if (device.rssi > -80) AccentOrange else AccentRed
                 )
                 if (!device.isConnectable) {
-                    Text(
-                        "Not connectable",
-                        fontSize = 10.sp,
-                        color = AccentRed
-                    )
+                    Text("Not connectable", fontSize = 10.sp, color = AccentRed)
                 }
             }
         }
@@ -676,26 +847,12 @@ fun DeviceCard(device: BLEDevice, onClick: () -> Unit) {
 
 @Composable
 fun ScanningScreen(stages: List<ScanStage>, onCancel: () -> Unit) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-    ) {
-        Text(
-            "Scanning Vehicle",
-            fontWeight = FontWeight.Bold,
-            fontSize = 24.sp,
-            color = TextPrimary
-        )
-        
+    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+        Text("Scanning Vehicle", fontWeight = FontWeight.Bold, fontSize = 24.sp, color = TextPrimary)
         Spacer(Modifier.height(24.dp))
         
-        LazyColumn(
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items(stages) { stage ->
-                ScanStageRow(stage)
-            }
+        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(stages) { stage -> ScanStageRow(stage) }
         }
         
         Spacer(Modifier.weight(1f))
@@ -703,23 +860,14 @@ fun ScanningScreen(stages: List<ScanStage>, onCancel: () -> Unit) {
         OutlinedButton(
             onClick = onCancel,
             modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.outlinedButtonColors(
-                contentColor = AccentRed
-            )
-        ) {
-            Text("Cancel Scan")
-        }
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = AccentRed)
+        ) { Text("Cancel Scan") }
     }
 }
 
 @Composable
 fun ScanStageRow(stage: ScanStage) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
+    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
         Box(
             modifier = Modifier
                 .size(32.dp)
@@ -746,9 +894,7 @@ fun ScanStageRow(stage: ScanStage) {
         
         Column(modifier = Modifier.weight(1f)) {
             Text(stage.label, fontWeight = FontWeight.Medium, color = TextPrimary)
-            stage.detail?.let {
-                Text(it, fontSize = 12.sp, color = TextSecondary)
-            }
+            stage.detail?.let { Text(it, fontSize = 12.sp, color = TextSecondary) }
         }
     }
 }
@@ -756,186 +902,304 @@ fun ScanStageRow(stage: ScanStage) {
 @Composable
 fun ResultsScreen(
     scanReport: ScanReport?,
+    analyticsPayloadJson: String?,
+    analyticsResponse: String?,
+    analyticsSubmitted: Boolean,
+    isMockMode: Boolean,
     onSubmit: () -> Unit,
+    onViewLogs: () -> Unit,
     onNewScan: () -> Unit
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-    ) {
-        Text(
-            "Scan Complete",
-            fontWeight = FontWeight.Bold,
-            fontSize = 24.sp,
-            color = TextPrimary
-        )
-        
-        Spacer(Modifier.height(24.dp))
-        
-        // Scan Summary Card
-        GlassCard {
-            Column(modifier = Modifier.padding(20.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Default.Assessment,
-                        contentDescription = null,
-                        tint = AccentCyan,
-                        modifier = Modifier.size(32.dp)
-                    )
-                    Spacer(Modifier.width(12.dp))
-                    Column {
-                        Text(
-                            "Scan Report",
-                            fontWeight = FontWeight.Bold,
-                            color = TextPrimary
-                        )
-                        Text(
-                            "Plain JSON (Unencrypted)",
-                            fontSize = 12.sp,
-                            color = AccentGreen
-                        )
-                    }
-                }
-                
-                Spacer(Modifier.height(16.dp))
-                Divider(color = TextSecondary.copy(alpha = 0.2f))
-                Spacer(Modifier.height(16.dp))
-                
-                scanReport?.let { report ->
-                    InfoRow("Scan ID", report.scanId.take(8) + "...")
-                    InfoRow("Registration", report.inspectionId ?: "N/A")
-                    InfoRow("Vehicle", report.vehicle.manufacturer ?: "Unknown")
-                    InfoRow("VIN", report.vehicle.vin ?: "Unknown")
-                    InfoRow("Protocol", report.protocol)
-                    InfoRow("MIL Status", if (report.milStatus.on) "ON" else "OFF")
-                    InfoRow("Total DTCs", "${report.summary.totalDTCs}")
-                    InfoRow("Live Readings", "${report.summary.totalLiveReadings}")
-                    InfoRow("Duration", "${report.scanDuration}ms")
-                }
-            }
-        }
-        
+    val clipboardManager = LocalClipboardManager.current
+    
+    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+        Text("Scan Complete", fontWeight = FontWeight.Bold, fontSize = 24.sp, color = TextPrimary)
         Spacer(Modifier.height(16.dp))
         
-        // DTC Summary if any
-        scanReport?.let { report ->
-            if (report.diagnosticTroubleCodes.isNotEmpty()) {
+        LazyColumn(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Scan Summary Card
+            item {
                 GlassCard {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            "Diagnostic Trouble Codes",
-                            fontWeight = FontWeight.Bold,
-                            color = TextPrimary
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Assessment, null, tint = AccentCyan, modifier = Modifier.size(28.dp))
+                            Spacer(Modifier.width(12.dp))
+                            Text("Scan Report", fontWeight = FontWeight.Bold, color = TextPrimary)
+                        }
+                        Spacer(Modifier.height(12.dp))
+                        Divider(color = TextSecondary.copy(alpha = 0.2f))
                         Spacer(Modifier.height(12.dp))
                         
-                        report.diagnosticTroubleCodes.take(5).forEach { dtc ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp)
-                            ) {
+                        scanReport?.let { report ->
+                            InfoRow("Scan ID", report.scanId.take(8) + "...")
+                            InfoRow("Registration", report.inspectionId ?: "N/A")
+                            InfoRow("Vehicle", report.vehicle.manufacturer ?: "Unknown")
+                            InfoRow("VIN", report.vehicle.vin ?: "Unknown")
+                            InfoRow("Total DTCs", "${report.summary.totalDTCs}")
+                            InfoRow("Duration", "${report.scanDuration}ms")
+                        }
+                    }
+                }
+            }
+            
+            // Analytics Status Card
+            item {
+                GlassCard {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                if (analyticsSubmitted) Icons.Default.CloudDone else Icons.Default.CloudUpload,
+                                null,
+                                tint = if (analyticsSubmitted) AccentGreen else AccentOrange,
+                                modifier = Modifier.size(28.dp)
+                            )
+                            Spacer(Modifier.width(12.dp))
+                            Column {
                                 Text(
-                                    dtc.code,
+                                    "WiseDrive Analytics",
                                     fontWeight = FontWeight.Bold,
-                                    color = AccentOrange,
-                                    modifier = Modifier.width(80.dp)
+                                    color = TextPrimary
                                 )
                                 Text(
-                                    dtc.description.take(40) + if (dtc.description.length > 40) "..." else "",
+                                    when {
+                                        isMockMode -> "Mock Mode - Simulated"
+                                        analyticsSubmitted -> "Submitted Successfully"
+                                        else -> "Pending..."
+                                    },
                                     fontSize = 12.sp,
-                                    color = TextSecondary
+                                    color = if (analyticsSubmitted) AccentGreen else AccentOrange
                                 )
                             }
                         }
                         
-                        if (report.diagnosticTroubleCodes.size > 5) {
+                        analyticsResponse?.let { response ->
+                            Spacer(Modifier.height(12.dp))
+                            Text("Response:", fontSize = 12.sp, color = TextSecondary)
                             Text(
-                                "+${report.diagnosticTroubleCodes.size - 5} more...",
+                                response,
                                 fontSize = 12.sp,
-                                color = AccentCyan,
-                                modifier = Modifier.padding(top = 8.dp)
+                                fontFamily = FontFamily.Monospace,
+                                color = AccentGreen
                             )
                         }
                     }
                 }
             }
-        }
-        
-        Spacer(Modifier.height(16.dp))
-        
-        // Analytics Info
-        GlassCard {
-            Row(
-                modifier = Modifier.padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    Icons.Default.CloudDone,
-                    contentDescription = null,
-                    tint = AccentGreen,
-                    modifier = Modifier.size(24.dp)
-                )
-                Spacer(Modifier.width(12.dp))
-                Column {
-                    Text(
-                        "WiseDrive Analytics",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp,
-                        color = TextPrimary
-                    )
-                    Text(
-                        "Encrypted data sent automatically",
-                        fontSize = 12.sp,
-                        color = TextSecondary
-                    )
+            
+            // Analytics Payload Preview
+            analyticsPayloadJson?.let { json ->
+                item {
+                    GlassCard {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("Analytics Payload", fontWeight = FontWeight.Bold, color = TextPrimary)
+                                IconButton(
+                                    onClick = {
+                                        clipboardManager.setText(AnnotatedString(json))
+                                    }
+                                ) {
+                                    Icon(Icons.Default.ContentCopy, "Copy", tint = AccentCyan)
+                                }
+                            }
+                            
+                            Spacer(Modifier.height(8.dp))
+                            
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(200.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(CodeBackground)
+                                    .padding(12.dp)
+                            ) {
+                                Text(
+                                    json.take(1500) + if (json.length > 1500) "\n..." else "",
+                                    fontSize = 10.sp,
+                                    fontFamily = FontFamily.Monospace,
+                                    color = AccentGreen,
+                                    modifier = Modifier.verticalScroll(rememberScrollState())
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // DTCs if any
+            scanReport?.let { report ->
+                if (report.diagnosticTroubleCodes.isNotEmpty()) {
+                    item {
+                        GlassCard {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Text("DTCs Found", fontWeight = FontWeight.Bold, color = TextPrimary)
+                                Spacer(Modifier.height(12.dp))
+                                
+                                report.diagnosticTroubleCodes.take(5).forEach { dtc ->
+                                    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                                        Text(dtc.code, fontWeight = FontWeight.Bold, color = AccentOrange, modifier = Modifier.width(80.dp))
+                                        Text(dtc.description.take(35) + "...", fontSize = 12.sp, color = TextSecondary)
+                                    }
+                                }
+                                
+                                if (report.diagnosticTroubleCodes.size > 5) {
+                                    Text("+${report.diagnosticTroubleCodes.size - 5} more...", fontSize = 12.sp, color = AccentCyan)
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
         
-        Spacer(Modifier.weight(1f))
+        Spacer(Modifier.height(16.dp))
+        
+        // View Logs Button
+        OutlinedButton(
+            onClick = onViewLogs,
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Icon(Icons.Default.Terminal, null)
+            Spacer(Modifier.width(8.dp))
+            Text("View Full Logs")
+        }
+        
+        Spacer(Modifier.height(8.dp))
         
         Button(
             onClick = onSubmit,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp),
+            modifier = Modifier.fillMaxWidth().height(56.dp),
             colors = ButtonDefaults.buttonColors(containerColor = AccentGreen),
             shape = RoundedCornerShape(16.dp)
         ) {
-            Icon(Icons.Default.CloudUpload, contentDescription = null)
+            Icon(Icons.Default.CloudUpload, null)
             Spacer(Modifier.width(8.dp))
             Text("Confirm Submission", fontWeight = FontWeight.Bold)
         }
         
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(8.dp))
         
-        OutlinedButton(
-            onClick = onNewScan,
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp)
-        ) {
+        OutlinedButton(onClick = onNewScan, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
             Text("New Scan")
+        }
+    }
+}
+
+@Composable
+fun LogsScreen(
+    logs: List<LogEntry>,
+    analyticsPayloadJson: String?,
+    onClear: () -> Unit,
+    onBack: () -> Unit
+) {
+    val clipboardManager = LocalClipboardManager.current
+    
+    Column(modifier = Modifier.fillMaxSize()) {
+        // Header
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onBack) {
+                Icon(Icons.Default.ArrowBack, "Back", tint = TextPrimary)
+            }
+            Text("Logs", fontWeight = FontWeight.Bold, fontSize = 20.sp, color = TextPrimary)
+            Row {
+                analyticsPayloadJson?.let { json ->
+                    IconButton(onClick = { clipboardManager.setText(AnnotatedString(json)) }) {
+                        Icon(Icons.Default.ContentCopy, "Copy Payload", tint = AccentCyan)
+                    }
+                }
+                IconButton(onClick = onClear) {
+                    Icon(Icons.Default.Delete, "Clear", tint = AccentRed)
+                }
+            }
+        }
+        
+        Divider(color = TextSecondary.copy(alpha = 0.2f))
+        
+        // Logs List
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(CodeBackground)
+                .padding(8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            items(logs.reversed()) { log ->
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        log.timestamp,
+                        fontSize = 10.sp,
+                        fontFamily = FontFamily.Monospace,
+                        color = TextSecondary,
+                        modifier = Modifier.width(90.dp)
+                    )
+                    
+                    val typeColor = when (log.type) {
+                        LogType.INFO -> AccentCyan
+                        LogType.SUCCESS -> AccentGreen
+                        LogType.ERROR -> AccentRed
+                        LogType.DATA -> AccentPurple
+                    }
+                    
+                    Text(
+                        "[${log.type.name}]",
+                        fontSize = 10.sp,
+                        fontFamily = FontFamily.Monospace,
+                        color = typeColor,
+                        modifier = Modifier.width(70.dp)
+                    )
+                    
+                    Column {
+                        Text(
+                            log.message,
+                            fontSize = 10.sp,
+                            fontFamily = FontFamily.Monospace,
+                            color = TextPrimary
+                        )
+                        log.details?.let { details ->
+                            Text(
+                                details,
+                                fontSize = 9.sp,
+                                fontFamily = FontFamily.Monospace,
+                                color = TextSecondary.copy(alpha = 0.7f)
+                            )
+                        }
+                    }
+                }
+            }
+            
+            if (logs.isEmpty()) {
+                item {
+                    Text(
+                        "No logs yet. Run a scan to see activity.",
+                        fontSize = 12.sp,
+                        color = TextSecondary,
+                        modifier = Modifier.padding(16.dp)
+                    )
+                }
+            }
         }
     }
 }
 
 // UI Components
 @Composable
-fun GlassCard(
-    modifier: Modifier = Modifier,
-    content: @Composable () -> Unit
-) {
+fun GlassCard(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = DarkSurface.copy(alpha = 0.8f)
-        )
-    ) {
-        content()
-    }
+        colors = CardDefaults.cardColors(containerColor = DarkSurface.copy(alpha = 0.8f))
+    ) { content() }
 }
 
 @Composable
@@ -955,12 +1219,7 @@ fun StatusChip(text: String, color: Color, icon: ImageVector) {
 
 @Composable
 fun StatusRow(label: String, value: String, icon: ImageVector, color: Color) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
+    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
         Icon(icon, null, tint = color, modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(12.dp))
         Text(label, color = TextSecondary, modifier = Modifier.weight(1f))
@@ -970,11 +1229,7 @@ fun StatusRow(label: String, value: String, icon: ImageVector, color: Color) {
 
 @Composable
 fun InfoRow(label: String, value: String) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp)
-    ) {
+    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
         Text(label, color = TextSecondary, modifier = Modifier.weight(1f))
         Text(value, fontWeight = FontWeight.Medium, color = TextPrimary)
     }
@@ -1006,5 +1261,5 @@ fun ActionButton(
 }
 
 enum class Screen {
-    HOME, DEVICES, SCANNING, RESULTS
+    HOME, DEVICES, SCANNING, RESULTS, LOGS
 }

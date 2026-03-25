@@ -82,7 +82,7 @@ class WiseDriveOBD2SDK private constructor(
     private val apiClient: APIClientInterface = if (useMock) MockAPIClient() else APIClient()
     private val gson = Gson()
     
-    // Internal analytics handler
+    // Internal analytics handler (uses same mock mode as SDK)
     private lateinit var wiseDriveAnalytics: WiseDriveAnalytics
     private val sdkScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     
@@ -90,8 +90,36 @@ class WiseDriveOBD2SDK private constructor(
     private var lastScanReport: ScanReport? = null
     private var lastApiPayload: APIPayload? = null
     
+    // Callbacks for analytics logging
+    private var onAnalyticsPayloadPrepared: ((String) -> Unit)? = null
+    private var onAnalyticsSubmissionResult: ((Boolean, String) -> Unit)? = null
+    
     private var stopRequested = false
     private var isInitialized = false
+
+    // ─── ANALYTICS CALLBACKS ──────────────────────────────────
+
+    /**
+     * Set callback to receive the analytics payload JSON when prepared
+     * Useful for debugging and logging what data is being sent
+     */
+    fun setOnAnalyticsPayloadPrepared(callback: (String) -> Unit) {
+        onAnalyticsPayloadPrepared = callback
+        if (::wiseDriveAnalytics.isInitialized) {
+            wiseDriveAnalytics.setOnPayloadPrepared(callback)
+        }
+    }
+
+    /**
+     * Set callback to receive analytics submission result
+     * @param callback (success: Boolean, response: String)
+     */
+    fun setOnAnalyticsSubmissionResult(callback: (Boolean, String) -> Unit) {
+        onAnalyticsSubmissionResult = callback
+        if (::wiseDriveAnalytics.isInitialized) {
+            wiseDriveAnalytics.setOnSubmissionResult(callback)
+        }
+    }
 
     // ─── INITIALIZATION ──────────────────────────────────────
 
@@ -130,8 +158,11 @@ class WiseDriveOBD2SDK private constructor(
         
         if (initialized) {
             isInitialized = true
-            wiseDriveAnalytics = WiseDriveAnalytics()
-            Logger.i(TAG, "SDK initialized successfully")
+            wiseDriveAnalytics = WiseDriveAnalytics(useMock)
+            // Set callbacks if they were registered before initialization
+            onAnalyticsPayloadPrepared?.let { wiseDriveAnalytics.setOnPayloadPrepared(it) }
+            onAnalyticsSubmissionResult?.let { wiseDriveAnalytics.setOnSubmissionResult(it) }
+            Logger.i(TAG, "SDK initialized successfully (mock=${useMock})")
         }
         
         initialized
@@ -508,6 +539,24 @@ class WiseDriveOBD2SDK private constructor(
      */
     fun isAnalyticsSubmitted(): Boolean = 
         if (::wiseDriveAnalytics.isInitialized) wiseDriveAnalytics.isAnalyticsSubmitted() else false
+
+    /**
+     * Get the last analytics payload JSON (pretty printed)
+     * Useful for debugging/logging
+     */
+    fun getLastAnalyticsPayloadJson(): String? = 
+        if (::wiseDriveAnalytics.isInitialized) wiseDriveAnalytics.getLastPayloadJson() else null
+
+    /**
+     * Get the last analytics response
+     */
+    fun getLastAnalyticsResponse(): String? = 
+        if (::wiseDriveAnalytics.isInitialized) wiseDriveAnalytics.getLastResponse() else null
+
+    /**
+     * Check if SDK is in mock mode
+     */
+    fun isMockMode(): Boolean = useMock
 
     /**
      * Clean up resources
