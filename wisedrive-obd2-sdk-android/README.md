@@ -56,9 +56,9 @@ sdk.discoverDevices(
 // 4. Connect to device
 sdk.connect("00:11:22:33:44:55")
 
-// 5. Run full scan
-val encryptedResult = sdk.runFullScan(ScanOptions(
-    orderId = "ORDER-12345",
+// 5. Run full scan (registrationNumber is MANDATORY)
+val scanReport = sdk.runFullScan(ScanOptions(
+    registrationNumber = "MH12AB1234",  // Required - Vehicle registration number
     manufacturer = "hyundai",
     year = 2022,
     onProgress = { stage ->
@@ -66,12 +66,27 @@ val encryptedResult = sdk.runFullScan(ScanOptions(
     }
 ))
 
-// 6. Submit encrypted report to backend
-val submitted = sdk.submitReport(encryptedResult)
+// 6. Access plain scan report
+println("Total DTCs: ${scanReport.summary.totalDTCs}")
+println("VIN: ${scanReport.vehicle.vin}")
 
-// 7. Disconnect
+// 7. Submit report (confirms analytics submission)
+sdk.submitReport(scanReport)
+
+// 8. Disconnect
 sdk.disconnect()
 ```
+
+## Important Notes
+
+### Registration Number
+The `registrationNumber` field is **mandatory** in `ScanOptions`. This is the vehicle's license plate number and supports all global formats.
+
+### Data Flow
+1. **Client App** receives plain `ScanReport` JSON for immediate use
+2. **WiseDrive Analytics** automatically receives encrypted scan data (AES-256-GCM)
+3. Analytics is sent in background with automatic retry
+4. `submitReport()` ensures analytics delivery before confirmation
 
 ## Scan Stages
 

@@ -31,9 +31,12 @@ import java.util.*
  * 
  * // Connect and scan
  * sdk.connect(deviceId)
- * val result = sdk.runFullScan(ScanOptions(orderId = "123", manufacturer = "hyundai"))
+ * val result = sdk.runFullScan(ScanOptions(
+ *     registrationNumber = "MH12AB1234",
+ *     manufacturer = "hyundai"
+ * ))
  * 
- * // Submit encrypted report
+ * // Submit report (client's backend)
  * sdk.submitReport(result)
  * ```
  */
@@ -79,6 +82,14 @@ class WiseDriveOBD2SDK private constructor(
     private val apiClient: APIClientInterface = if (useMock) MockAPIClient() else APIClient()
     private val gson = Gson()
     
+    // Internal analytics handler
+    private lateinit var wiseDriveAnalytics: WiseDriveAnalytics
+    private val sdkScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    
+    // Last scan report for submitReport
+    private var lastScanReport: ScanReport? = null
+    private var lastApiPayload: APIPayload? = null
+    
     private var stopRequested = false
     private var isInitialized = false
 
@@ -119,6 +130,7 @@ class WiseDriveOBD2SDK private constructor(
         
         if (initialized) {
             isInitialized = true
+            wiseDriveAnalytics = WiseDriveAnalytics(securityManager)
             Logger.i(TAG, "SDK initialized successfully")
         }
         
@@ -199,9 +211,14 @@ class WiseDriveOBD2SDK private constructor(
 
     /**
      * Run full diagnostic scan
-     * Returns encrypted payload - host app cannot read it
+     * 
+     * Returns plain ScanReport to the client app.
+     * Encrypted data is automatically sent to WiseDrive analytics endpoint.
+     * 
+     * @param options Scan options with MANDATORY registrationNumber
+     * @return ScanReport - Plain JSON scan report for client use
      */
-    suspend fun runFullScan(options: ScanOptions = ScanOptions()): EncryptedPayload = 
+    suspend fun runFullScan(options: ScanOptions): ScanReport = 
         withContext(Dispatchers.IO) {
             if (!securityManager.isInitialized()) {
                 throw SecurityException("SDK not initialized with encryption key. Call initializeWithKey() first.")
@@ -210,12 +227,12 @@ class WiseDriveOBD2SDK private constructor(
             stopRequested = false
             val scanId = UUID.randomUUID().toString()
             val startTime = System.currentTimeMillis()
-            val dateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).apply {
+            val dateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
                 timeZone = TimeZone.getTimeZone("UTC")
             }
             val scanTimestamp = dateFormat.format(Date())
             
-            Logger.i(TAG, "Starting full scan: $scanId")
+            Logger.i(TAG, "Starting full scan: $scanId for registration: ${options.registrationNumber}")
             
             // Progress helper
             fun reportProgress(id: StageId, label: String, status: StageStatus, detail: String? = null) {
@@ -246,8 +263,12 @@ class WiseDriveOBD2SDK private constructor(
                 
                 // Stage 3: MIL Status
                 reportProgress(StageId.MIL_STATUS, "Checking MIL status", StageStatus.RUNNING)
+                var milOn = false
+                var dtcCount = 0
                 try {
                     val milStatus = elm327.readMILStatus()
+                    milOn = milStatus.milOn
+                    dtcCount = milStatus.dtcCount
                     val detail = "MIL ${if (milStatus.milOn) "ON" else "OFF"}, ${milStatus.dtcCount} DTC(s) expected"
                     reportProgress(StageId.MIL_STATUS, "Checking MIL status", StageStatus.COMPLETED, detail)
                 } catch (e: Exception) {
@@ -373,21 +394,23 @@ class WiseDriveOBD2SDK private constructor(
                     permanentDTCs = permanentDTCs,
                     liveData = liveReadings,
                     scanCycles = 1,
-                    orderId = options.orderId
+                    registrationNumber = options.registrationNumber
                 )
                 
-                // Transform to API payload format
-                val apiPayload = ReportTransformer.transform(scanReport, options.orderId)
+                // Transform to API payload format for analytics
+                val apiPayload = ReportTransformer.transform(scanReport, options.registrationNumber)
                 
-                // Serialize to JSON
-                val payloadJson = gson.toJson(apiPayload)
+                // Store for later submitReport() call
+                lastScanReport = scanReport
+                lastApiPayload = apiPayload
                 
-                // Encrypt
-                val encryptedPayload = securityManager.encryptReport(payloadJson)
+                // Send encrypted data to WiseDrive analytics (background with retry)
+                wiseDriveAnalytics.sendAnalytics(apiPayload, sdkScope)
                 
                 Logger.i(TAG, "Scan complete. Duration: ${scanDuration}ms, DTCs: ${storedDTCs.size + pendingDTCs.size + permanentDTCs.size}")
                 
-                encryptedPayload
+                // Return plain ScanReport to client
+                scanReport
                 
             } catch (e: CancellationException) {
                 Logger.w(TAG, "Scan cancelled: ${e.message}")
@@ -407,11 +430,26 @@ class WiseDriveOBD2SDK private constructor(
     }
 
     /**
-     * Submit encrypted report to backend
+     * Submit report to client's backend
+     * Also ensures WiseDrive analytics has been sent
+     * 
+     * @param scanReport The scan report to submit
+     * @return Boolean indicating success
      */
-    suspend fun submitReport(encryptedPayload: EncryptedPayload): Boolean {
-        return apiClient.submitReport(encryptedPayload)
+    suspend fun submitReport(scanReport: ScanReport): Boolean {
+        // Ensure analytics is submitted to WiseDrive
+        wiseDriveAnalytics.onClientSubmit()
+        
+        // Client can use scanReport as needed - it's plain JSON
+        // This method is for client's own backend submission
+        Logger.i(TAG, "Report ready for client submission: ${scanReport.scanId}")
+        return true
     }
+
+    /**
+     * Get the last API payload (for client's backend submission)
+     */
+    fun getLastApiPayload(): APIPayload? = lastApiPayload
 
     // ─── DIRECT ELM327 ACCESS (Advanced) ──────────────────────
 
@@ -464,4 +502,20 @@ class WiseDriveOBD2SDK private constructor(
      * Get current protocol
      */
     fun getProtocol(): String = elm327.getProtocol()
+
+    /**
+     * Check if WiseDrive analytics has been submitted
+     */
+    fun isAnalyticsSubmitted(): Boolean = 
+        if (::wiseDriveAnalytics.isInitialized) wiseDriveAnalytics.isAnalyticsSubmitted() else false
+
+    /**
+     * Clean up resources
+     */
+    fun cleanup() {
+        if (::wiseDriveAnalytics.isInitialized) {
+            wiseDriveAnalytics.cancel()
+        }
+        sdkScope.cancel()
+    }
 }

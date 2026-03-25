@@ -4,11 +4,12 @@
 Build a production-ready Android Native SDK (Kotlin) called `wisedrive-obd2-sdk-android` to connect with ELM327 OBD-II adapters via Bluetooth Classic (SPP) and BLE. It must strictly port an existing React Native SDK's protocol logic, AT command sequences, and byte-parsing.
 
 ## Core Requirements
-1. **Security**: Tamper-proof, AES-256-GCM encryption, root/emulator/debug detection, in-memory keys fetched from backend, strict ProGuard obfuscation. Host apps should only receive opaque encrypted payloads.
+1. **Security**: Tamper-proof, AES-256-GCM encryption for WiseDrive analytics, root/emulator/debug detection, in-memory keys fetched from backend, strict ProGuard obfuscation.
 2. **Connectivity**: Implement a 5-strategy Bluetooth Classic connection fallback.
 3. **Scanning**: Multi-ECU manufacturer scanning, ISO-TP multi-frame reassembly, 19 live data PIDs, 4000+ mapped DTC codes.
-4. **Output**: Exact JSON payload transformation matching legacy API expectations.
+4. **Output**: Plain JSON `ScanReport` to client apps, encrypted data to WiseDrive analytics.
 5. **Sample App**: A polished Jetpack Compose UI utilizing a Mock API and Mock Bluetooth adapter for testing.
+6. **Registration Number**: Mandatory field for vehicle identification (supports all global formats).
 
 ## Project Architecture
 ```
@@ -25,7 +26,7 @@ Build a production-ready Android Native SDK (Kotlin) called `wisedrive-obd2-sdk-
 │   │   ├── adapter/                   # Bluetooth adapters (Classic, BLE, Mock)
 │   │   ├── protocol/                  # ELM327 protocol, parsers
 │   │   ├── security/                  # Encryption, integrity checks
-│   │   ├── network/                   # API client, report transformer
+│   │   ├── network/                   # API client, report transformer, WiseDriveAnalytics
 │   │   └── util/                      # Logger
 │   └── src/test/                      # Unit tests
 └── sample/                            # Sample app module
@@ -37,7 +38,7 @@ Build a production-ready Android Native SDK (Kotlin) called `wisedrive-obd2-sdk-
 - **Jetpack Compose** for sample app UI
 - **Bluetooth Classic (SPP/RFCOMM)** - Primary adapter with 5 fallback strategies
 - **BLE GATT** - Secondary adapter for newer ELM327 devices
-- **AES-256-GCM Encryption** - All scan data encrypted before leaving SDK
+- **AES-256-GCM Encryption** - Scan data encrypted for WiseDrive analytics only
 - **ISO-15031-6** - DTC parsing standard
 - **UDS Service 0x19** - Enhanced diagnostics
 - **ISO-TP (ISO 15765-2)** - Multi-frame message reassembly
@@ -54,9 +55,22 @@ Build a production-ready Android Native SDK (Kotlin) called `wisedrive-obd2-sdk-
 - [x] Adapter implementations (BluetoothClassicAdapter, BLEAdapter, MockAdapter)
 - [x] API Client with Mock support
 - [x] Sample App scaffolding (Jetpack Compose)
-- [x] Unit tests (28 tests passing)
+- [x] Unit tests (52 tests passing)
 - [x] Kotlin compilation successful for SDK module
-- [x] Fixed all compilation errors from bulk file generation
+
+### Updated (Session: 2026-01)
+- [x] **Registration Number Mandatory**: Added `registrationNumber` as required field in `ScanOptions`
+- [x] **Dual Data Flow**: 
+  - Client apps receive plain `ScanReport` JSON
+  - WiseDrive analytics receives encrypted data (AES-256-GCM)
+- [x] **WiseDrive Analytics**: New `WiseDriveAnalytics` class for automatic background submission
+  - Endpoint: `http://164.52.213.170:82/apiv2/webhook/obdreport/wisedrive`
+  - Silent retry with exponential backoff until `submitReport()` is called
+- [x] **Updated Sample App**: 
+  - Added Registration Number input field (mandatory)
+  - Updated to display plain `ScanReport` instead of encrypted payload
+  - Shows analytics submission status
+- [x] **Updated README**: Documented new API with `registrationNumber`
 
 ### Test Results (2025-03-22)
 - **MockAdapterTest**: 11/11 passed
@@ -68,16 +82,33 @@ Build a production-ready Android Native SDK (Kotlin) called `wisedrive-obd2-sdk-
 - **DTCDescriptionsTest**: 5/5 passed
 - **Total**: 52/52 unit tests passing
 
-## Known Limitations
-1. **ARM64 Build Environment**: This preview environment runs on ARM64 Linux, which is incompatible with Android SDK AAPT2 daemon mode. QEMU emulation partially works but daemon fails. Full APK builds require x86_64 environment.
-2. **Mock Mode Only**: Without physical hardware, testing is limited to MockAdapter.
+## Data Flow Architecture
 
-## CI/CD Setup
-GitHub Actions workflow (`.github/workflows/android-ci.yml`) provides:
-- **Build Job**: Compiles SDK AAR and Sample APK on x86_64 Ubuntu
-- **Instrumented Tests Job**: Runs UI and SDK integration tests on Android emulator
-- **Lint Job**: Android lint analysis
-- **Artifacts**: sdk-release.aar, sample-debug.apk, test-results
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         runFullScan()                           │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                      OBD Scan Process                           │
+│  (ELM327 Init → VIN → MIL → DTCs → ECU Modules → Live Data)    │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+              ┌───────────────┴───────────────┐
+              ▼                               ▼
+┌─────────────────────────┐     ┌─────────────────────────────────┐
+│    Plain ScanReport     │     │     WiseDrive Analytics         │
+│   (returned to client)  │     │  (encrypted, background send)   │
+└─────────────────────────┘     └─────────────────────────────────┘
+              │                               │
+              ▼                               ▼
+┌─────────────────────────┐     ┌─────────────────────────────────┐
+│   Client's Backend      │     │  http://164.52.213.170:82/      │
+│    (their choice)       │     │  apiv2/webhook/obdreport/       │
+└─────────────────────────┘     │  wisedrive                      │
+                                └─────────────────────────────────┘
+```
 
 ## API Reference
 
@@ -97,13 +128,64 @@ sdk.discoverDevices { device ->
 ### Connection & Scan
 ```kotlin
 sdk.connect(deviceId)
-val encryptedResult = sdk.runFullScan(ScanOptions(
-    orderId = "12345",
+
+// registrationNumber is MANDATORY
+val scanReport = sdk.runFullScan(ScanOptions(
+    registrationNumber = "MH12AB1234",  // Required
     manufacturer = "hyundai",
+    year = 2022,
     onProgress = { stage -> /* ScanStage updates */ }
 ))
-sdk.submitReport(encryptedResult)
+
+// Client receives plain ScanReport
+println("DTCs: ${scanReport.summary.totalDTCs}")
+println("VIN: ${scanReport.vehicle.vin}")
+
+// Confirm submission (ensures analytics delivered)
+sdk.submitReport(scanReport)
 ```
+
+### Analytics Payload Format
+```json
+{
+  "license_plate": "MH12AB1234",
+  "report_url": "https://example.com/report.pdf",
+  "car_company": "Hyundai",
+  "status": 1,
+  "time": "2026-01-15T10:30:00.000Z",
+  "mechanic_name": "Wisedrive Utils",
+  "mechanic_email": "utils@wisedrive.in",
+  "vin": "KMHXX00XXXX000000",
+  "mil_status": true,
+  "scan_ended": "automatic_success",
+  "faulty_modules": ["Engine Control Module (ECM)", "ABS/ESP Control Module"],
+  "non_faulty_modules": ["Engine", "Transmission", "BCM", ...],
+  "code_details": [
+    {
+      "dtc": "P0503",
+      "meaning": "Vehicle Speed Sensor A Circuit Intermittent/Erratic/High",
+      "module": "Engine Control Module (ECM)",
+      "status": "Confirmed",
+      "descriptions": ["..."],
+      "causes": ["Sensor malfunction", ...],
+      "solutions": ["Diagnose with scanner", ...],
+      "symptoms": ["Check engine light", ...]
+    }
+  ],
+  "battery_voltage": 14.02
+}
+```
+
+## Known Limitations
+1. **ARM64 Build Environment**: This preview environment runs on ARM64 Linux, which is incompatible with Android SDK AAPT2 daemon mode. Full APK builds require x86_64 environment.
+2. **Mock Mode Only**: Without physical hardware, testing is limited to MockAdapter.
+
+## CI/CD Setup
+GitHub Actions workflow (`.github/workflows/android-ci.yml`) provides:
+- **Build Job**: Compiles SDK AAR and Sample APK on x86_64 Ubuntu
+- **Instrumented Tests Job**: Runs UI and SDK integration tests on Android emulator
+- **Lint Job**: Android lint analysis
+- **Artifacts**: sdk-release.aar, sample-debug.apk, test-results
 
 ## Backlog / Future Tasks
 - [ ] Push to GitHub and enable Actions for full APK build
@@ -112,10 +194,12 @@ sdk.submitReport(encryptedResult)
 - [ ] Real API integration (pending backend endpoints)
 - [ ] Android Instrumented Tests on physical devices
 - [ ] CI/CD pipeline with release signing
+- [ ] Add analytics submission status callback
 
 ## Security Considerations
 - All encryption keys fetched from backend at runtime
 - Keys stored only in memory, never persisted
 - IntegrityChecker validates environment (root, emulator, debugger)
 - ProGuard rules configured for obfuscation
-- Host apps receive only encrypted payloads
+- Client apps receive plain JSON (for their use)
+- WiseDrive analytics receives AES-256-GCM encrypted data

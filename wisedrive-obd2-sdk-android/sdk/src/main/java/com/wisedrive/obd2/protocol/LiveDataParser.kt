@@ -124,7 +124,7 @@ object LiveDataParser {
         permanentDTCs: List<DTCBasic>,
         liveData: List<LiveDataReading>,
         scanCycles: Int,
-        orderId: String?
+        registrationNumber: String
     ): ScanReport {
         
         // Convert DTCBasic to DTCDetail with knowledge base enrichment
@@ -167,7 +167,7 @@ object LiveDataParser {
         }.format(Date())
         
         return ScanReport(
-            inspectionId = orderId,
+            inspectionId = registrationNumber,
             scanId = scanId,
             scanTimestamp = scanTimestamp,
             scanDuration = scanDuration,

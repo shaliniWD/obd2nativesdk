@@ -89,6 +89,11 @@ class MainActivity : ComponentActivity() {
         }
         permissionLauncher.launch(permissions)
     }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        sdk.cleanup()
+    }
 }
 
 // Color scheme
@@ -131,13 +136,13 @@ fun OBDScannerApp(sdk: WiseDriveOBD2SDK, requestPermissions: () -> Unit) {
     var connectedDevice by remember { mutableStateOf<BLEDevice?>(null) }
     var scanStages by remember { mutableStateOf(listOf<ScanStage>()) }
     var isScanRunning by remember { mutableStateOf(false) }
-    var scanResult by remember { mutableStateOf<EncryptedPayload?>(null) }
+    var scanResult by remember { mutableStateOf<ScanReport?>(null) }
     var isInitialized by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     
-    // Selected manufacturer
+    // Configuration
     var selectedManufacturer by remember { mutableStateOf("hyundai") }
-    var orderId by remember { mutableStateOf("ORDER-${System.currentTimeMillis()}") }
+    var registrationNumber by remember { mutableStateOf("") }
 
     Column(
         modifier = Modifier
@@ -212,6 +217,12 @@ fun OBDScannerApp(sdk: WiseDriveOBD2SDK, requestPermissions: () -> Unit) {
                         }
                     },
                     onStartScan = {
+                        // Validate registration number
+                        if (registrationNumber.isBlank()) {
+                            errorMessage = "Registration number is required"
+                            return@HomeScreen
+                        }
+                        
                         currentScreen = Screen.SCANNING
                         scanStages = emptyList()
                         scanResult = null
@@ -220,7 +231,7 @@ fun OBDScannerApp(sdk: WiseDriveOBD2SDK, requestPermissions: () -> Unit) {
                         scope.launch {
                             try {
                                 val result = sdk.runFullScan(ScanOptions(
-                                    orderId = orderId,
+                                    registrationNumber = registrationNumber,
                                     manufacturer = selectedManufacturer,
                                     year = 2022,
                                     onProgress = { stage ->
@@ -231,6 +242,7 @@ fun OBDScannerApp(sdk: WiseDriveOBD2SDK, requestPermissions: () -> Unit) {
                                 currentScreen = Screen.RESULTS
                             } catch (e: Exception) {
                                 errorMessage = e.message
+                                currentScreen = Screen.HOME
                             } finally {
                                 isScanRunning = false
                             }
@@ -245,8 +257,8 @@ fun OBDScannerApp(sdk: WiseDriveOBD2SDK, requestPermissions: () -> Unit) {
                     },
                     selectedManufacturer = selectedManufacturer,
                     onManufacturerChange = { selectedManufacturer = it },
-                    orderId = orderId,
-                    onOrderIdChange = { orderId = it }
+                    registrationNumber = registrationNumber,
+                    onRegistrationNumberChange = { registrationNumber = it }
                 )
             }
             
@@ -282,7 +294,7 @@ fun OBDScannerApp(sdk: WiseDriveOBD2SDK, requestPermissions: () -> Unit) {
             
             Screen.RESULTS -> {
                 ResultsScreen(
-                    encryptedPayload = scanResult,
+                    scanReport = scanResult,
                     onSubmit = {
                         scope.launch {
                             try {
@@ -329,8 +341,8 @@ fun HomeScreen(
     onDisconnect: () -> Unit,
     selectedManufacturer: String,
     onManufacturerChange: (String) -> Unit,
-    orderId: String,
-    onOrderIdChange: (String) -> Unit
+    registrationNumber: String,
+    onRegistrationNumberChange: (String) -> Unit
 ) {
     LazyColumn(
         modifier = Modifier
@@ -448,20 +460,29 @@ fun HomeScreen(
             item {
                 GlassCard {
                     Column(modifier = Modifier.padding(16.dp)) {
+                        // Registration Number (MANDATORY)
                         OutlinedTextField(
-                            value = orderId,
-                            onValueChange = onOrderIdChange,
-                            label = { Text("Order ID") },
+                            value = registrationNumber,
+                            onValueChange = onRegistrationNumberChange,
+                            label = { Text("Registration Number *") },
+                            placeholder = { Text("e.g., MH12AB1234") },
                             modifier = Modifier.fillMaxWidth(),
+                            isError = registrationNumber.isBlank(),
+                            supportingText = {
+                                if (registrationNumber.isBlank()) {
+                                    Text("Required", color = AccentRed)
+                                }
+                            },
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = AccentCyan,
-                                unfocusedBorderColor = TextSecondary.copy(alpha = 0.3f)
+                                unfocusedBorderColor = TextSecondary.copy(alpha = 0.3f),
+                                errorBorderColor = AccentRed
                             )
                         )
                         
                         Spacer(Modifier.height(12.dp))
                         
-                        // Manufacturer dropdown - using stable DropdownMenu API
+                        // Manufacturer dropdown
                         var expanded by remember { mutableStateOf(false) }
                         val manufacturers = listOf(
                             "hyundai" to "Hyundai",
@@ -524,8 +545,10 @@ fun HomeScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp),
+                    enabled = registrationNumber.isNotBlank(),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = AccentCyan
+                        containerColor = AccentCyan,
+                        disabledContainerColor = AccentCyan.copy(alpha = 0.3f)
                     ),
                     shape = RoundedCornerShape(16.dp)
                 ) {
@@ -732,7 +755,7 @@ fun ScanStageRow(stage: ScanStage) {
 
 @Composable
 fun ResultsScreen(
-    encryptedPayload: EncryptedPayload?,
+    scanReport: ScanReport?,
     onSubmit: () -> Unit,
     onNewScan: () -> Unit
 ) {
@@ -750,24 +773,25 @@ fun ResultsScreen(
         
         Spacer(Modifier.height(24.dp))
         
+        // Scan Summary Card
         GlassCard {
             Column(modifier = Modifier.padding(20.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
-                        Icons.Default.Lock,
+                        Icons.Default.Assessment,
                         contentDescription = null,
-                        tint = AccentGreen,
+                        tint = AccentCyan,
                         modifier = Modifier.size(32.dp)
                     )
                     Spacer(Modifier.width(12.dp))
                     Column {
                         Text(
-                            "Report Encrypted",
+                            "Scan Report",
                             fontWeight = FontWeight.Bold,
                             color = TextPrimary
                         )
                         Text(
-                            "AES-256-GCM",
+                            "Plain JSON (Unencrypted)",
                             fontSize = 12.sp,
                             color = AccentGreen
                         )
@@ -778,22 +802,97 @@ fun ResultsScreen(
                 Divider(color = TextSecondary.copy(alpha = 0.2f))
                 Spacer(Modifier.height(16.dp))
                 
-                encryptedPayload?.let { payload ->
-                    InfoRow("Key ID", payload.keyId.take(8) + "...")
-                    InfoRow("Algorithm", payload.algorithm)
-                    InfoRow("Payload Size", "${payload.payload.length} chars")
-                    InfoRow("Signed", if (payload.signature != null) "Yes" else "No")
+                scanReport?.let { report ->
+                    InfoRow("Scan ID", report.scanId.take(8) + "...")
+                    InfoRow("Registration", report.inspectionId ?: "N/A")
+                    InfoRow("Vehicle", report.vehicle.manufacturer ?: "Unknown")
+                    InfoRow("VIN", report.vehicle.vin ?: "Unknown")
+                    InfoRow("Protocol", report.protocol)
+                    InfoRow("MIL Status", if (report.milStatus.on) "ON" else "OFF")
+                    InfoRow("Total DTCs", "${report.summary.totalDTCs}")
+                    InfoRow("Live Readings", "${report.summary.totalLiveReadings}")
+                    InfoRow("Duration", "${report.scanDuration}ms")
                 }
             }
         }
         
         Spacer(Modifier.height(16.dp))
         
-        Text(
-            "The scan report is encrypted and can only be decrypted by the WiseDrive backend.",
-            fontSize = 14.sp,
-            color = TextSecondary
-        )
+        // DTC Summary if any
+        scanReport?.let { report ->
+            if (report.diagnosticTroubleCodes.isNotEmpty()) {
+                GlassCard {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            "Diagnostic Trouble Codes",
+                            fontWeight = FontWeight.Bold,
+                            color = TextPrimary
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        
+                        report.diagnosticTroubleCodes.take(5).forEach { dtc ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp)
+                            ) {
+                                Text(
+                                    dtc.code,
+                                    fontWeight = FontWeight.Bold,
+                                    color = AccentOrange,
+                                    modifier = Modifier.width(80.dp)
+                                )
+                                Text(
+                                    dtc.description.take(40) + if (dtc.description.length > 40) "..." else "",
+                                    fontSize = 12.sp,
+                                    color = TextSecondary
+                                )
+                            }
+                        }
+                        
+                        if (report.diagnosticTroubleCodes.size > 5) {
+                            Text(
+                                "+${report.diagnosticTroubleCodes.size - 5} more...",
+                                fontSize = 12.sp,
+                                color = AccentCyan,
+                                modifier = Modifier.padding(top = 8.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        
+        Spacer(Modifier.height(16.dp))
+        
+        // Analytics Info
+        GlassCard {
+            Row(
+                modifier = Modifier.padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    Icons.Default.CloudDone,
+                    contentDescription = null,
+                    tint = AccentGreen,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(Modifier.width(12.dp))
+                Column {
+                    Text(
+                        "WiseDrive Analytics",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                        color = TextPrimary
+                    )
+                    Text(
+                        "Encrypted data sent automatically",
+                        fontSize = 12.sp,
+                        color = TextSecondary
+                    )
+                }
+            }
+        }
         
         Spacer(Modifier.weight(1f))
         
@@ -807,7 +906,7 @@ fun ResultsScreen(
         ) {
             Icon(Icons.Default.CloudUpload, contentDescription = null)
             Spacer(Modifier.width(8.dp))
-            Text("Submit Report", fontWeight = FontWeight.Bold)
+            Text("Confirm Submission", fontWeight = FontWeight.Bold)
         }
         
         Spacer(Modifier.height(12.dp))

@@ -4,7 +4,7 @@ package com.wisedrive.obd2.models
  * API Payload - EXACT format expected by backend
  */
 data class APIPayload(
-    val license_plate: String,              // = orderId passed in ScanOptions
+    val license_plate: String,              // = registrationNumber from ScanOptions (MANDATORY)
     val report_url: String,                 // = "https://example.com/report.pdf" (placeholder)
     val car_company: String,                // = vehicle.manufacturer ?? "Unknown"
     val status: Int,                        // = 1 (success)

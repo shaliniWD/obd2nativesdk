@@ -2,10 +2,21 @@ package com.wisedrive.obd2.models
 
 /**
  * Options for running a full scan
+ * 
+ * @param registrationNumber Vehicle registration/license plate number (MANDATORY)
+ * @param manufacturer Vehicle manufacturer ID (e.g., "tata", "hyundai", "maruti")
+ * @param year Vehicle model year
+ * @param onProgress Callback for scan progress updates
  */
 data class ScanOptions(
-    val orderId: String? = null,
-    val manufacturer: String? = null,      // e.g., "tata", "hyundai", "maruti"
+    val registrationNumber: String,         // MANDATORY - Vehicle registration number (any format globally)
+    val manufacturer: String? = null,       // e.g., "tata", "hyundai", "maruti"
     val year: Int? = null,
     val onProgress: ((ScanStage) -> Unit)? = null
-)
+) {
+    init {
+        require(registrationNumber.isNotBlank()) { 
+            "Registration number is required and cannot be blank" 
+        }
+    }
+}
