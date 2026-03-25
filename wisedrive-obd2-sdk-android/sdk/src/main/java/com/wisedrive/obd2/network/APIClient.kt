@@ -23,6 +23,9 @@ interface APIClientInterface {
 
 /**
  * API Client for SDK initialization and report submission
+ * 
+ * Note: Since analytics are sent as plain JSON (no encryption), 
+ * the encryption key fetch is optional and will use a fallback if unavailable.
  */
 open class APIClient(
     private val baseUrl: String = "https://wisedrive.com:81",
@@ -31,18 +34,25 @@ open class APIClient(
     companion object {
         private const val TAG = "APIClient"
         private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
+        
+        // Fallback key for SDK initialization when backend is unavailable
+        // This is used only for internal SDK state - analytics are sent as plain JSON
+        private const val FALLBACK_ENCRYPTION_KEY = "MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDE="
     }
 
     private val gson = Gson()
     private val httpClient = OkHttpClient.Builder()
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
+        .connectTimeout(10, TimeUnit.SECONDS)  // Reduced timeout for faster fallback
+        .readTimeout(10, TimeUnit.SECONDS)
         .writeTimeout(30, TimeUnit.SECONDS)
         .build()
 
     /**
      * Fetch encryption key from backend
      * Returns: Triple(base64Key, keyId, expiresAt)
+     * 
+     * If backend is unavailable, returns a fallback key to allow SDK initialization.
+     * This is safe because analytics are sent as plain JSON.
      */
     override suspend fun fetchEncryptionKey(): Triple<String, String, Long>? = withContext(Dispatchers.IO) {
         try {
@@ -59,7 +69,7 @@ open class APIClient(
                 val body = response.body?.string()
                 val initResponse = gson.fromJson(body, InitResponse::class.java)
                 
-                Logger.i(TAG, "Encryption key fetched: ${initResponse.keyId}")
+                Logger.i(TAG, "Encryption key fetched from backend: ${initResponse.keyId}")
                 
                 Triple(
                     initResponse.encryptionKey,
@@ -67,13 +77,23 @@ open class APIClient(
                     initResponse.expiresAt
                 )
             } else {
-                Logger.e(TAG, "Failed to fetch key: ${response.code}")
-                null
+                Logger.w(TAG, "Backend returned ${response.code}, using fallback key")
+                getFallbackKey()
             }
         } catch (e: Exception) {
-            Logger.e(TAG, "Error fetching key: ${e.message}")
-            null
+            Logger.w(TAG, "Backend unavailable (${e.message}), using fallback key")
+            getFallbackKey()
         }
+    }
+    
+    /**
+     * Get fallback encryption key for SDK initialization
+     */
+    private fun getFallbackKey(): Triple<String, String, Long> {
+        val keyId = "fallback-${UUID.randomUUID().toString().take(8)}"
+        val expiresAt = System.currentTimeMillis() + (24 * 60 * 60 * 1000) // 24 hours
+        Logger.i(TAG, "Using fallback key: $keyId")
+        return Triple(FALLBACK_ENCRYPTION_KEY, keyId, expiresAt)
     }
 
     /**

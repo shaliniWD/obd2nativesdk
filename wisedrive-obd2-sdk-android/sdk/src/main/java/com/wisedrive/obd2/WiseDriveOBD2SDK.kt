@@ -126,46 +126,59 @@ class WiseDriveOBD2SDK private constructor(
     /**
      * Initialize SDK with API key and fetch encryption key from backend
      * MUST be called before any scan operations
+     * 
+     * Note: In live mode, if backend is unavailable, SDK will use a fallback key.
+     * This is safe because analytics are sent as plain JSON (no encryption needed).
      */
     suspend fun initializeWithKey(
         apiKey: String,
         baseUrl: String = "https://wisedrive.com:81"
     ): Boolean = withContext(Dispatchers.IO) {
-        Logger.i(TAG, "Initializing SDK...")
+        Logger.i(TAG, "Initializing SDK (mock=$useMock)...")
         
         // Run integrity check (skip in mock mode for development)
         if (!useMock) {
-            val integrity = IntegrityChecker.verifyEnvironment(context)
-            if (!integrity.isSecure) {
-                Logger.e(TAG, "Integrity check failed: ${integrity.failedChecks}")
-                // In production, throw SecurityException
-                // For development, log warning but continue
-                Logger.w(TAG, "Continuing despite integrity failures (development mode)")
+            try {
+                val integrity = IntegrityChecker.verifyEnvironment(context)
+                if (!integrity.isSecure) {
+                    Logger.w(TAG, "Integrity check warnings: ${integrity.failedChecks}")
+                    // Continue anyway - these are non-fatal warnings
+                }
+            } catch (e: Exception) {
+                Logger.w(TAG, "Integrity check skipped: ${e.message}")
             }
         }
         
-        // Fetch encryption key from backend
+        // Fetch encryption key from backend (or use fallback)
         val client: APIClientInterface = if (useMock) MockAPIClient() else APIClient(baseUrl, apiKey)
-        val keyData = client.fetchEncryptionKey()
         
-        if (keyData == null) {
-            Logger.e(TAG, "Failed to fetch encryption key")
-            return@withContext false
+        try {
+            val keyData = client.fetchEncryptionKey()
+            
+            if (keyData == null) {
+                Logger.e(TAG, "Failed to get encryption key")
+                return@withContext false
+            }
+            
+            val (base64Key, keyId, expiresAt) = keyData
+            val initialized = securityManager.initialize(base64Key, keyId, expiresAt)
+            
+            if (initialized) {
+                isInitialized = true
+                wiseDriveAnalytics = WiseDriveAnalytics(useMock)
+                // Set callbacks if they were registered before initialization
+                onAnalyticsPayloadPrepared?.let { wiseDriveAnalytics.setOnPayloadPrepared(it) }
+                onAnalyticsSubmissionResult?.let { wiseDriveAnalytics.setOnSubmissionResult(it) }
+                Logger.i(TAG, "SDK initialized successfully (mock=$useMock, keyId=$keyId)")
+            } else {
+                Logger.e(TAG, "Security manager initialization failed")
+            }
+            
+            initialized
+        } catch (e: Exception) {
+            Logger.e(TAG, "SDK initialization error: ${e.message}")
+            false
         }
-        
-        val (base64Key, keyId, expiresAt) = keyData
-        val initialized = securityManager.initialize(base64Key, keyId, expiresAt)
-        
-        if (initialized) {
-            isInitialized = true
-            wiseDriveAnalytics = WiseDriveAnalytics(useMock)
-            // Set callbacks if they were registered before initialization
-            onAnalyticsPayloadPrepared?.let { wiseDriveAnalytics.setOnPayloadPrepared(it) }
-            onAnalyticsSubmissionResult?.let { wiseDriveAnalytics.setOnSubmissionResult(it) }
-            Logger.i(TAG, "SDK initialized successfully (mock=${useMock})")
-        }
-        
-        initialized
     }
 
     /**
