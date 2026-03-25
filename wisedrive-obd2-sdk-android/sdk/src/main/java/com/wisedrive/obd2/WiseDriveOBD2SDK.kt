@@ -78,8 +78,6 @@ class WiseDriveOBD2SDK private constructor(
     }
     
     private val elm327: ELM327Service = ELM327Service(adapter)
-    private val securityManager = SDKSecurityManager()
-    private val apiClient: APIClientInterface = if (useMock) MockAPIClient() else APIClient()
     private val gson = Gson()
     
     // Internal analytics handler (uses same mock mode as SDK)
@@ -124,15 +122,15 @@ class WiseDriveOBD2SDK private constructor(
     // ─── INITIALIZATION ──────────────────────────────────────
 
     /**
-     * Initialize SDK with API key and fetch encryption key from backend
+     * Initialize SDK
      * MUST be called before any scan operations
      * 
-     * Note: In live mode, if backend is unavailable, SDK will use a fallback key.
-     * This is safe because analytics are sent as plain JSON (no encryption needed).
+     * @param apiKey Optional API key for future use
+     * @param baseUrl Optional base URL for future use
      */
     suspend fun initializeWithKey(
-        apiKey: String,
-        baseUrl: String = "https://wisedrive.com:81"
+        apiKey: String = "",
+        baseUrl: String = ""
     ): Boolean = withContext(Dispatchers.IO) {
         Logger.i(TAG, "Initializing SDK (mock=$useMock)...")
         
@@ -149,36 +147,17 @@ class WiseDriveOBD2SDK private constructor(
             }
         }
         
-        // Fetch encryption key from backend (or use fallback)
-        val client: APIClientInterface = if (useMock) MockAPIClient() else APIClient(baseUrl, apiKey)
+        // Initialize analytics handler
+        wiseDriveAnalytics = WiseDriveAnalytics(useMock)
         
-        try {
-            val keyData = client.fetchEncryptionKey()
-            
-            if (keyData == null) {
-                Logger.e(TAG, "Failed to get encryption key")
-                return@withContext false
-            }
-            
-            val (base64Key, keyId, expiresAt) = keyData
-            val initialized = securityManager.initialize(base64Key, keyId, expiresAt)
-            
-            if (initialized) {
-                isInitialized = true
-                wiseDriveAnalytics = WiseDriveAnalytics(useMock)
-                // Set callbacks if they were registered before initialization
-                onAnalyticsPayloadPrepared?.let { wiseDriveAnalytics.setOnPayloadPrepared(it) }
-                onAnalyticsSubmissionResult?.let { wiseDriveAnalytics.setOnSubmissionResult(it) }
-                Logger.i(TAG, "SDK initialized successfully (mock=$useMock, keyId=$keyId)")
-            } else {
-                Logger.e(TAG, "Security manager initialization failed")
-            }
-            
-            initialized
-        } catch (e: Exception) {
-            Logger.e(TAG, "SDK initialization error: ${e.message}")
-            false
-        }
+        // Set callbacks if they were registered before initialization
+        onAnalyticsPayloadPrepared?.let { wiseDriveAnalytics.setOnPayloadPrepared(it) }
+        onAnalyticsSubmissionResult?.let { wiseDriveAnalytics.setOnSubmissionResult(it) }
+        
+        isInitialized = true
+        Logger.i(TAG, "SDK initialized successfully (mock=$useMock)")
+        
+        true
     }
 
     /**
@@ -257,15 +236,15 @@ class WiseDriveOBD2SDK private constructor(
      * Run full diagnostic scan
      * 
      * Returns plain ScanReport to the client app.
-     * Encrypted data is automatically sent to WiseDrive analytics endpoint.
+     * Data is automatically sent to WiseDrive analytics endpoint.
      * 
      * @param options Scan options with MANDATORY registrationNumber
      * @return ScanReport - Plain JSON scan report for client use
      */
     suspend fun runFullScan(options: ScanOptions): ScanReport = 
         withContext(Dispatchers.IO) {
-            if (!securityManager.isInitialized()) {
-                throw SecurityException("SDK not initialized with encryption key. Call initializeWithKey() first.")
+            if (!isInitialized) {
+                throw IllegalStateException("SDK not initialized. Call initializeWithKey() first.")
             }
             
             stopRequested = false
