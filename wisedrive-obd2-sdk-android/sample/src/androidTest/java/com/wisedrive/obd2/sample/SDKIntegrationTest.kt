@@ -6,6 +6,10 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.wisedrive.obd2.WiseDriveOBD2SDK
 import com.wisedrive.obd2.models.BLEDevice
 import com.wisedrive.obd2.models.ScanOptions
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.*
@@ -64,7 +68,7 @@ class SDKIntegrationTest {
         )
         
         assertTrue("Should find at least one mock device", devices.isNotEmpty())
-        assertTrue("Should include OBDII device", devices.any { it.name.contains("OBD") })
+        assertTrue("Should include OBDII device", devices.any { it.name?.contains("OBD") == true })
     }
 
     @Test
@@ -367,7 +371,7 @@ class SDKIntegrationTest {
         
         var scanCancelled = false
         
-        kotlinx.coroutines.launch {
+        CoroutineScope(Dispatchers.IO).launch {
             try {
                 sdk.runFullScan(
                     ScanOptions(
@@ -385,7 +389,7 @@ class SDKIntegrationTest {
             }
         }
         
-        kotlinx.coroutines.delay(5000)
+        delay(5000)
     }
 
     // ========== BLACKBOX: State Verification Tests ==========
