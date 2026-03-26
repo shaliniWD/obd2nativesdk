@@ -209,8 +209,28 @@ class ReportTransformerTest {
     fun `battery voltage extracted from live data`() {
         val scanReport = createScanReportWithLiveData(
             listOf(
-                LiveDataReading("Control Module Voltage", 14.02, "V", "PID_42"),
-                LiveDataReading("Engine RPM", 800.0, "rpm", "PID_0C")
+                LiveDataReading(
+                    pid = "42",
+                    name = "Control Module Voltage",
+                    shortName = "Voltage",
+                    value = 14.02,
+                    displayValue = "14.02 V",
+                    unit = "V",
+                    category = "electrical",
+                    timestamp = System.currentTimeMillis(),
+                    rawHex = "410E38"
+                ),
+                LiveDataReading(
+                    pid = "0C",
+                    name = "Engine RPM",
+                    shortName = "RPM",
+                    value = 800.0,
+                    displayValue = "800 rpm",
+                    unit = "rpm",
+                    category = "engine",
+                    timestamp = System.currentTimeMillis(),
+                    rawHex = "410C0C80"
+                )
             )
         )
         
@@ -224,8 +244,28 @@ class ReportTransformerTest {
     fun `battery voltage null if not in live data`() {
         val scanReport = createScanReportWithLiveData(
             listOf(
-                LiveDataReading("Engine RPM", 800.0, "rpm", "PID_0C"),
-                LiveDataReading("Coolant Temp", 90.0, "C", "PID_05")
+                LiveDataReading(
+                    pid = "0C",
+                    name = "Engine RPM",
+                    shortName = "RPM",
+                    value = 800.0,
+                    displayValue = "800 rpm",
+                    unit = "rpm",
+                    category = "engine",
+                    timestamp = System.currentTimeMillis(),
+                    rawHex = "410C0C80"
+                ),
+                LiveDataReading(
+                    pid = "05",
+                    name = "Coolant Temp",
+                    shortName = "Coolant",
+                    value = 90.0,
+                    displayValue = "90 C",
+                    unit = "C",
+                    category = "temperature",
+                    timestamp = System.currentTimeMillis(),
+                    rawHex = "41055A"
+                )
             )
         )
         
