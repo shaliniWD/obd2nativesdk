@@ -58,7 +58,7 @@ Build a production-ready Android Native SDK (Kotlin) called `wisedrive-obd2-sdk-
 - [x] Unit tests (52 tests passing)
 - [x] Kotlin compilation successful for SDK module
 
-### Updated (Session: 2026-01)
+### Updated (Session: 2026-01 - Initial Analytics)
 - [x] **Registration Number Mandatory**: Added `registrationNumber` as required field in `ScanOptions`
 - [x] **Dual Data Flow**: 
   - Client apps receive plain `ScanReport` JSON
@@ -68,13 +68,37 @@ Build a production-ready Android Native SDK (Kotlin) called `wisedrive-obd2-sdk-
   - Auth: Basic (prasad:prasad@123)
   - Silent retry with exponential backoff until `submitReport()` is called
 - [x] **Endpoint Tested**: 
-  - ✅ Valid tracking ID (ORD6894331): Returns `{"result": "SUCCESS"}`
-  - ✅ Invalid tracking ID: Returns 500 (not in WiseDrive system)
+  - Valid tracking ID (ORD6894331): Returns `{"result": "SUCCESS"}`
+  - Invalid tracking ID: Returns 500 (not in WiseDrive system)
 - [x] **Updated Sample App**: 
   - Added Registration Number input field (mandatory)
   - Updated to display plain `ScanReport` instead of encrypted payload
   - Shows analytics submission status
 - [x] **Updated README**: Documented new API with `registrationNumber`
+
+### Updated (Session: 2026-01-15 - Field Separation & Testing)
+- [x] **Separate Fields**: Split into TWO mandatory fields:
+  - `registrationNumber` - Vehicle registration/license plate (e.g., MH12AB1234)
+  - `trackingId` - WiseDrive Tracking/Order ID (e.g., ORD6894331)
+- [x] **API Payload Updated**:
+  - `license_plate` maps to `registrationNumber`
+  - `tracking_id` (NEW) maps to `trackingId`
+- [x] **CLEARTEXT Fix**: Added Network Security Config to allow HTTP to analytics endpoint
+  - Created `network_security_config.xml` for SDK and Sample App
+  - Updated AndroidManifest.xml files with `android:networkSecurityConfig` attribute
+- [x] **Comprehensive Testing Suites**:
+  - **WhiteBox Tests (Unit Tests)**:
+    - `ScanOptionsTest.kt` - Field validation, format acceptance, data class equality
+    - `APIPayloadTest.kt` - Payload structure, module classification, field mapping
+    - `ReportTransformerTest.kt` - Transformation logic, ECU mapping, status mapping
+  - **BlackBox Tests (Instrumented Tests)**:
+    - `MainActivityTest.kt` - UI tests for both input fields, scan button states, flow tests
+    - `SDKIntegrationTest.kt` - SDK API tests, analytics payload verification
+- [x] **Updated Sample App UI**:
+  - Two separate input fields: "Registration Number" and "Tracking ID / Order ID"
+  - Both fields required - scan button disabled if either is empty
+  - Default test values: MH12AB1234 (reg) and ORD6894331 (tracking)
+- [x] **Updated README**: Complete documentation with new API, testing instructions
 
 ### Test Results (2025-03-22)
 - **MockAdapterTest**: 11/11 passed
@@ -85,6 +109,13 @@ Build a production-ready Android Native SDK (Kotlin) called `wisedrive-obd2-sdk-
 - **SDKSecurityManagerTest**: 3/3 passed
 - **DTCDescriptionsTest**: 5/5 passed
 - **Total**: 52/52 unit tests passing
+
+### New Tests Added (2026-01-15) - Pending Execution
+- **ScanOptionsTest**: ~15 tests (validation, formats, equality)
+- **APIPayloadTest**: ~12 tests (structure, fields, modules)
+- **ReportTransformerTest**: ~20 tests (mapping, transformation)
+- **MainActivityTest (BlackBox)**: ~18 tests (UI, flows)
+- **SDKIntegrationTest (BlackBox)**: ~18 tests (SDK API)
 
 ## Data Flow Architecture
 
@@ -133,9 +164,10 @@ sdk.discoverDevices { device ->
 ```kotlin
 sdk.connect(deviceId)
 
-// registrationNumber is MANDATORY
+// BOTH registrationNumber AND trackingId are MANDATORY
 val scanReport = sdk.runFullScan(ScanOptions(
-    registrationNumber = "MH12AB1234",  // Required
+    registrationNumber = "MH12AB1234",  // Required - Vehicle license plate
+    trackingId = "ORD6894331",          // Required - WiseDrive Order/Tracking ID
     manufacturer = "hyundai",
     year = 2022,
     onProgress = { stage -> /* ScanStage updates */ }
@@ -153,6 +185,7 @@ sdk.submitReport(scanReport)
 ```json
 {
   "license_plate": "MH12AB1234",
+  "tracking_id": "ORD6894331",
   "report_url": "https://example.com/report.pdf",
   "car_company": "Hyundai",
   "status": 1,
@@ -194,11 +227,13 @@ GitHub Actions workflow (`.github/workflows/android-ci.yml`) provides:
 ## Backlog / Future Tasks
 - [ ] Push to GitHub and enable Actions for full APK build
 - [ ] Run instrumented tests in CI (MainActivityTest, SDKIntegrationTest)
+- [ ] Run new WhiteBox tests (ScanOptionsTest, APIPayloadTest, ReportTransformerTest)
 - [ ] ProGuard/R8 obfuscation verification
 - [ ] Real API integration (pending backend endpoints)
 - [ ] Android Instrumented Tests on physical devices
 - [ ] CI/CD pipeline with release signing
-- [ ] Add analytics submission status callback
+- [x] Add analytics submission status callback (COMPLETED)
+- [ ] Migrate analytics endpoint to HTTPS (recommended for production)
 
 ## Security Considerations
 - All encryption keys fetched from backend at runtime
@@ -206,4 +241,5 @@ GitHub Actions workflow (`.github/workflows/android-ci.yml`) provides:
 - IntegrityChecker validates environment (root, emulator, debugger)
 - ProGuard rules configured for obfuscation
 - Client apps receive plain JSON (for their use)
-- WiseDrive analytics receives AES-256-GCM encrypted data
+- WiseDrive analytics receives plain JSON to analytics endpoint
+- Network Security Config allows HTTP only to specific analytics IP (164.52.213.170)

@@ -34,8 +34,9 @@ object ReportTransformer {
      * Transform ScanReport to API payload format
      * @param scanReport The internal scan report
      * @param registrationNumber Vehicle registration/license plate number
+     * @param trackingId WiseDrive Tracking/Order ID
      */
-    fun transform(scanReport: ScanReport, registrationNumber: String): APIPayload {
+    fun transform(scanReport: ScanReport, registrationNumber: String, trackingId: String): APIPayload {
         // Extract DTCs from categories
         val stored = scanReport.dtcsByCategory.history   // → status = "Confirmed"
         val pending = scanReport.dtcsByCategory.pending   // → status = "Pending"
@@ -80,6 +81,7 @@ object ReportTransformer {
         // Build final payload
         return APIPayload(
             license_plate = registrationNumber,
+            tracking_id = trackingId,
             report_url = "https://example.com/report.pdf",
             car_company = scanReport.vehicle.manufacturer ?: "Unknown",
             status = 1,

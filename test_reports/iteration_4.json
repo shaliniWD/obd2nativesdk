@@ -1,0 +1,112 @@
+{
+  "iteration": 4,
+  "timestamp": "2026-01-15T12:00:00Z",
+  "summary": "SDK Enhancement: Separate Registration Number and Tracking ID fields + CLEARTEXT fix + Comprehensive Testing",
+  "environment": "ARM64 Linux container (preview)",
+  "changes_implemented": {
+    "field_separation": {
+      "status": "COMPLETED",
+      "description": "Separated registrationNumber and trackingId as two independent mandatory fields",
+      "files_modified": [
+        "sdk/src/main/java/com/wisedrive/obd2/models/ScanOptions.kt",
+        "sdk/src/main/java/com/wisedrive/obd2/models/APIPayload.kt",
+        "sdk/src/main/java/com/wisedrive/obd2/network/ReportTransformer.kt",
+        "sdk/src/main/java/com/wisedrive/obd2/WiseDriveOBD2SDK.kt",
+        "sample/src/main/java/com/wisedrive/obd2/sample/MainActivity.kt"
+      ],
+      "api_changes": {
+        "ScanOptions": {
+          "before": "ScanOptions(registrationNumber: String, manufacturer: String?, year: Int?, onProgress: ((ScanStage) -> Unit)?)",
+          "after": "ScanOptions(registrationNumber: String, trackingId: String, manufacturer: String?, year: Int?, onProgress: ((ScanStage) -> Unit)?)"
+        },
+        "APIPayload": {
+          "new_field": "tracking_id: String",
+          "mapping": {
+            "license_plate": "registrationNumber (vehicle registration/license plate)",
+            "tracking_id": "trackingId (WiseDrive Order/Tracking ID)"
+          }
+        }
+      }
+    },
+    "cleartext_fix": {
+      "status": "COMPLETED",
+      "description": "Added network security config to allow HTTP cleartext to analytics endpoint",
+      "files_created": [
+        "sdk/src/main/res/xml/network_security_config.xml",
+        "sample/src/main/res/xml/network_security_config.xml"
+      ],
+      "files_modified": [
+        "sdk/src/main/AndroidManifest.xml",
+        "sample/src/main/AndroidManifest.xml"
+      ],
+      "config": {
+        "allowed_cleartext_domain": "164.52.213.170",
+        "default_cleartext": false
+      }
+    },
+    "testing_suites": {
+      "status": "COMPLETED",
+      "whitebox_tests": {
+        "description": "Internal logic and structure validation tests",
+        "files_created": [
+          "sdk/src/test/java/com/wisedrive/obd2/models/ScanOptionsTest.kt",
+          "sdk/src/test/java/com/wisedrive/obd2/models/APIPayloadTest.kt",
+          "sdk/src/test/java/com/wisedrive/obd2/network/ReportTransformerTest.kt"
+        ],
+        "test_categories": [
+          "Validation tests (mandatory field enforcement)",
+          "Format acceptance tests (various registration/tracking formats)",
+          "Data class equality tests",
+          "Module mapping tests",
+          "ECU source mapping tests",
+          "DTC status mapping tests",
+          "Battery voltage extraction tests"
+        ]
+      },
+      "blackbox_tests": {
+        "description": "User-facing API and UI integration tests",
+        "files_modified": [
+          "sample/src/androidTest/java/com/wisedrive/obd2/sample/MainActivityTest.kt",
+          "sample/src/androidTest/java/com/wisedrive/obd2/sample/SDKIntegrationTest.kt"
+        ],
+        "test_categories": [
+          "App launch tests",
+          "Input field tests (both fields visible and editable)",
+          "Scan button enable/disable based on field validation",
+          "Device discovery tests",
+          "Full scan flow tests with both fields",
+          "Analytics payload verification",
+          "Results screen tests",
+          "SDK initialization tests",
+          "Connection tests",
+          "Exception handling tests (empty fields)"
+        ]
+      }
+    },
+    "documentation": {
+      "status": "COMPLETED",
+      "files_modified": ["README.md"],
+      "updates": [
+        "Updated Quick Start example with both mandatory fields",
+        "Added Mandatory Fields table documentation",
+        "Added Analytics Payload structure documentation",
+        "Added Network Security Configuration section",
+        "Added Testing section with test categories"
+      ]
+    }
+  },
+  "validation_notes": {
+    "compilation": "Cannot verify in this environment (no Java/Android SDK)",
+    "syntax_review": "Kotlin syntax manually verified - should compile",
+    "recommendation": "Run `./gradlew :sdk:test` in x86_64 environment to execute unit tests"
+  },
+  "test_execution_instructions": {
+    "unit_tests": "./gradlew :sdk:test",
+    "instrumented_tests": "./gradlew :sample:connectedAndroidTest",
+    "ci_pipeline": "Push to GitHub and enable Actions for automated testing"
+  },
+  "breaking_changes": {
+    "ScanOptions": "Now requires trackingId parameter (second mandatory parameter)",
+    "migration": "Update all ScanOptions() calls to include trackingId: sdk.runFullScan(ScanOptions(registrationNumber = \"...\", trackingId = \"...\"))"
+  }
+}

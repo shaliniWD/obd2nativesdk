@@ -168,7 +168,8 @@ fun OBDScannerApp(
     
     // Configuration
     var selectedManufacturer by remember { mutableStateOf("hyundai") }
-    var registrationNumber by remember { mutableStateOf("ORD6894331") } // Default to test value
+    var registrationNumber by remember { mutableStateOf("MH12AB1234") } // Vehicle registration/license plate
+    var trackingId by remember { mutableStateOf("ORD6894331") } // WiseDrive Tracking/Order ID
     var useMockMode by remember { mutableStateOf(true) }
     
     // Logs
@@ -312,6 +313,10 @@ fun OBDScannerApp(
                             errorMessage = "Registration number is required"
                             return@HomeScreen
                         }
+                        if (trackingId.isBlank()) {
+                            errorMessage = "Tracking ID is required"
+                            return@HomeScreen
+                        }
                         
                         currentScreen = Screen.SCANNING
                         scanStages = emptyList()
@@ -321,12 +326,13 @@ fun OBDScannerApp(
                         analyticsSubmitted = false
                         isScanRunning = true
                         
-                        addLog(LogType.INFO, "Starting scan for: $registrationNumber")
+                        addLog(LogType.INFO, "Starting scan for: $registrationNumber (Tracking: $trackingId)")
                         
                         scope.launch {
                             try {
                                 val result = getSdk()?.runFullScan(ScanOptions(
                                     registrationNumber = registrationNumber,
+                                    trackingId = trackingId,
                                     manufacturer = selectedManufacturer,
                                     year = 2022,
                                     onProgress = { stage ->
@@ -357,7 +363,9 @@ fun OBDScannerApp(
                     selectedManufacturer = selectedManufacturer,
                     onManufacturerChange = { selectedManufacturer = it },
                     registrationNumber = registrationNumber,
-                    onRegistrationNumberChange = { registrationNumber = it }
+                    onRegistrationNumberChange = { registrationNumber = it },
+                    trackingId = trackingId,
+                    onTrackingIdChange = { trackingId = it }
                 )
             }
             
@@ -472,7 +480,9 @@ fun HomeScreen(
     selectedManufacturer: String,
     onManufacturerChange: (String) -> Unit,
     registrationNumber: String,
-    onRegistrationNumberChange: (String) -> Unit
+    onRegistrationNumberChange: (String) -> Unit,
+    trackingId: String,
+    onTrackingIdChange: (String) -> Unit
 ) {
     LazyColumn(
         modifier = Modifier
@@ -645,14 +655,38 @@ fun HomeScreen(
                         OutlinedTextField(
                             value = registrationNumber,
                             onValueChange = onRegistrationNumberChange,
-                            label = { Text("Registration/Tracking ID *") },
-                            placeholder = { Text("e.g., ORD6894331") },
+                            label = { Text("Registration Number *") },
+                            placeholder = { Text("e.g., MH12AB1234") },
                             modifier = Modifier.fillMaxWidth(),
                             isError = registrationNumber.isBlank(),
                             supportingText = {
+                                if (registrationNumber.isBlank()) {
+                                    Text("Required - Vehicle license plate", color = AccentRed)
+                                } else {
+                                    Text("Vehicle registration/license plate", fontSize = 10.sp, color = TextSecondary)
+                                }
+                            },
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = AccentCyan,
+                                unfocusedBorderColor = TextSecondary.copy(alpha = 0.3f),
+                                errorBorderColor = AccentRed
+                            )
+                        )
+                        
+                        Spacer(Modifier.height(12.dp))
+                        
+                        // Tracking ID (MANDATORY)
+                        OutlinedTextField(
+                            value = trackingId,
+                            onValueChange = onTrackingIdChange,
+                            label = { Text("Tracking ID / Order ID *") },
+                            placeholder = { Text("e.g., ORD6894331") },
+                            modifier = Modifier.fillMaxWidth(),
+                            isError = trackingId.isBlank(),
+                            supportingText = {
                                 Column {
-                                    if (registrationNumber.isBlank()) {
-                                        Text("Required", color = AccentRed)
+                                    if (trackingId.isBlank()) {
+                                        Text("Required - WiseDrive Order ID", color = AccentRed)
                                     }
                                     Text(
                                         "Use ORD6894331 for testing",
@@ -733,7 +767,7 @@ fun HomeScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp),
-                    enabled = registrationNumber.isNotBlank(),
+                    enabled = registrationNumber.isNotBlank() && trackingId.isNotBlank(),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = AccentCyan,
                         disabledContainerColor = AccentCyan.copy(alpha = 0.3f)

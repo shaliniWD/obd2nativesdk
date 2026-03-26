@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Network Security Configuration for WiseDrive OBD2 Sample App
+  Allows cleartext (HTTP) traffic to specific WiseDrive analytics endpoint.
+  This is required because the analytics endpoint uses HTTP.
+  
+  For production, consider migrating to HTTPS endpoint.
+-->
+<network-security-config>
+    <!-- Default: Block cleartext for all domains -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+    
+    <!-- Allow cleartext ONLY for WiseDrive analytics endpoint -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">164.52.213.170</domain>
+    </domain-config>
+</network-security-config>

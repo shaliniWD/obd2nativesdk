@@ -255,7 +255,7 @@ class WiseDriveOBD2SDK private constructor(
             }
             val scanTimestamp = dateFormat.format(Date())
             
-            Logger.i(TAG, "Starting full scan: $scanId for registration: ${options.registrationNumber}")
+            Logger.i(TAG, "Starting full scan: $scanId for registration: ${options.registrationNumber}, trackingId: ${options.trackingId}")
             
             // Progress helper
             fun reportProgress(id: StageId, label: String, status: StageStatus, detail: String? = null) {
@@ -421,7 +421,7 @@ class WiseDriveOBD2SDK private constructor(
                 )
                 
                 // Transform to API payload format for analytics
-                val apiPayload = ReportTransformer.transform(scanReport, options.registrationNumber)
+                val apiPayload = ReportTransformer.transform(scanReport, options.registrationNumber, options.trackingId)
                 
                 // Store for later submitReport() call
                 lastScanReport = scanReport

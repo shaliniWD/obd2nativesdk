@@ -1,6 +1,6 @@
 # WiseDrive OBD2 SDK for Android
 
-A production-ready Android Native SDK (Kotlin) for connecting to ELM327 OBD-II adapters via Bluetooth Classic (SPP) and BLE, scanning vehicle diagnostic trouble codes (DTCs), reading live sensor data, and returning encrypted scan reports.
+A production-ready Android Native SDK (Kotlin) for connecting to ELM327 OBD-II adapters via Bluetooth Classic (SPP) and BLE, scanning vehicle diagnostic trouble codes (DTCs), reading live sensor data, and returning plain scan reports with automatic analytics submission.
 
 ## Features
 
@@ -11,7 +11,7 @@ A production-ready Android Native SDK (Kotlin) for connecting to ELM327 OBD-II a
 - **4000+ DTC Descriptions** - Comprehensive database of diagnostic trouble codes with descriptions
 - **Knowledge Base** - Causes, symptoms, and solutions for common DTCs
 - **19 Live Data PIDs** - Real-time sensor data (RPM, Speed, Temperature, Fuel, etc.)
-- **AES-256-GCM Encryption** - Secure, tamper-proof scan reports
+- **Automatic Analytics** - Background submission to WiseDrive analytics with retry mechanism
 - **Anti-Tampering** - Root detection, Frida detection, emulator detection
 
 ## Installation
@@ -56,9 +56,10 @@ sdk.discoverDevices(
 // 4. Connect to device
 sdk.connect("00:11:22:33:44:55")
 
-// 5. Run full scan (registrationNumber is MANDATORY)
+// 5. Run full scan (BOTH fields are MANDATORY)
 val scanReport = sdk.runFullScan(ScanOptions(
-    registrationNumber = "MH12AB1234",  // Required - Vehicle registration number
+    registrationNumber = "MH12AB1234",  // Required - Vehicle registration/license plate
+    trackingId = "ORD6894331",          // Required - WiseDrive Tracking/Order ID
     manufacturer = "hyundai",
     year = 2022,
     onProgress = { stage ->
@@ -79,14 +80,51 @@ sdk.disconnect()
 
 ## Important Notes
 
-### Registration Number
-The `registrationNumber` field is **mandatory** in `ScanOptions`. This is the vehicle's license plate number and supports all global formats.
+### Mandatory Fields (ScanOptions)
+
+Both fields are **MANDATORY** in `ScanOptions`:
+
+| Field | Description | Example |
+|-------|-------------|---------|
+| `registrationNumber` | Vehicle registration/license plate number | `"MH12AB1234"`, `"KA01XY9999"` |
+| `trackingId` | WiseDrive Tracking/Order ID | `"ORD6894331"`, `"WD2025ABC123"` |
+
+### Analytics Payload
+
+The SDK sends the following data to WiseDrive analytics:
+
+```json
+{
+  "license_plate": "MH12AB1234",      // From registrationNumber
+  "tracking_id": "ORD6894331",        // From trackingId  
+  "report_url": "https://...",
+  "car_company": "Hyundai",
+  "vin": "KMHXX00XXXX000000",
+  "mil_status": true,
+  "faulty_modules": ["Engine", "ABS"],
+  "non_faulty_modules": ["Transmission", ...],
+  "code_details": [...],
+  "battery_voltage": 14.02
+}
+```
 
 ### Data Flow
 1. **Client App** receives plain `ScanReport` JSON for immediate use
-2. **WiseDrive Analytics** automatically receives encrypted scan data (AES-256-GCM)
-3. Analytics is sent in background with automatic retry
+2. **WiseDrive Analytics** automatically receives plain JSON to analytics endpoint
+3. Analytics is sent in background with automatic retry (exponential backoff)
 4. `submitReport()` ensures analytics delivery before confirmation
+
+### Network Security Configuration
+
+The SDK includes a network security config to allow HTTP communication to the WiseDrive analytics endpoint. This is already configured in the SDK and sample app manifests.
+
+If you're integrating the SDK into your app, ensure your `AndroidManifest.xml` includes:
+
+```xml
+<application
+    android:networkSecurityConfig="@xml/network_security_config"
+    ...>
+```
 
 ## Scan Stages
 
@@ -116,6 +154,9 @@ Add to AndroidManifest.xml:
 <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
 <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
 
+<!-- Internet for analytics -->
+<uses-permission android:name="android.permission.INTERNET" />
+
 <uses-feature android:name="android.hardware.bluetooth" android:required="true" />
 ```
 
@@ -126,6 +167,29 @@ sdk.requestPermissions(activity)
 ```
 
 ## Advanced Usage
+
+### Analytics Callbacks
+
+```kotlin
+// Get notified when analytics payload is prepared
+sdk.setOnAnalyticsPayloadPrepared { json ->
+    println("Payload: $json")
+}
+
+// Get notified of submission result
+sdk.setOnAnalyticsSubmissionResult { success, response ->
+    if (success) {
+        println("Analytics submitted: $response")
+    } else {
+        println("Analytics failed: $response")
+    }
+}
+
+// Check analytics status
+val isSubmitted = sdk.isAnalyticsSubmitted()
+val lastPayload = sdk.getLastAnalyticsPayloadJson()
+val lastResponse = sdk.getLastAnalyticsResponse()
+```
 
 ### Direct ELM327 Access
 
@@ -157,18 +221,41 @@ The SDK supports 20+ manufacturers out of the box:
 - **American**: Ford, GM, Chrysler
 - **Others**: Volvo, Jaguar Land Rover, Renault, Peugeot, Fiat, SEAT, Skoda
 
-## Security
+## Testing
 
-### Encryption
+### Mock Mode
 
-All scan reports are encrypted with AES-256-GCM before being returned to the host app. The encryption key is fetched from the backend during SDK initialization and stored only in memory.
+Enable mock mode for testing without physical hardware:
 
 ```kotlin
-// Host app only sees encrypted data
-val encryptedResult = sdk.runFullScan(options)
-// encryptedResult.payload is a Base64-encoded AES-GCM ciphertext
-// Only the backend can decrypt it
+val sdk = WiseDriveOBD2SDK.initialize(context, useMock = true)
 ```
+
+### Test Tracking ID
+
+Use `ORD6894331` as tracking ID for testing against the live WiseDrive analytics endpoint.
+
+### Unit Tests
+
+The SDK includes comprehensive test suites:
+
+- **WhiteBox Tests**: Internal logic validation
+  - `ScanOptionsTest` - Field validation and formats
+  - `APIPayloadTest` - Payload structure tests
+  - `ReportTransformerTest` - Transformation logic
+  - `DTCParserTest`, `LiveDataParserTest`, etc.
+
+- **BlackBox Tests**: User-facing API testing
+  - `MainActivityTest` - UI integration tests
+  - `SDKIntegrationTest` - SDK API tests
+
+Run tests:
+```bash
+./gradlew :sdk:test           # Unit tests
+./gradlew :sample:connectedAndroidTest  # Instrumented tests
+```
+
+## Security
 
 ### Anti-Tampering
 
