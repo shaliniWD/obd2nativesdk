@@ -1,0 +1,41 @@
+# application.yml - WiseDrive Encryption Configuration
+
+# ============================================================
+# WISEDRIVE OBD2 ENCRYPTED WEBHOOK CONFIGURATION
+# ============================================================
+
+wisedrive:
+  encryption:
+    # Option 1: Load private key from file (recommended for production)
+    private-key-path: ${WISEDRIVE_PRIVATE_KEY_PATH:/etc/secrets/wisedrive_private.pem}
+    
+    # Option 2: Load private key directly (for development/testing)
+    # private-key: ${WISEDRIVE_PRIVATE_KEY:}
+    
+    # Replay protection window (milliseconds)
+    replay-window-ms: 300000  # 5 minutes
+    
+    # Supported encryption versions
+    supported-versions:
+      - 2
+
+# ============================================================
+# LOGGING CONFIGURATION
+# ============================================================
+
+logging:
+  level:
+    com.wisedrive.inspection.security: DEBUG
+    com.wisedrive.inspection.controllers: INFO
+
+# ============================================================
+# EXAMPLE ENVIRONMENT VARIABLES
+# ============================================================
+#
+# For file-based key:
+#   export WISEDRIVE_PRIVATE_KEY_PATH=/secure/wisedrive_private.pem
+#
+# For direct key (escape newlines):
+#   export WISEDRIVE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nMIIJQgIBADANBgkqh...\n-----END PRIVATE KEY-----"
+#
+# ============================================================
