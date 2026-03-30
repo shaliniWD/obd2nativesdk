@@ -252,14 +252,319 @@ object DTCKnowledgeBase {
             listOf("ABS module failure", "CAN bus wiring", "Poor ground", "Connector damage", "Module programming"),
             listOf("ABS warning light", "No ABS function", "Communication error", "Brake issues", "Multiple codes"),
             listOf("Test ABS module", "Check CAN wiring", "Inspect connectors", "Check grounds", "Reprogram module")
+        ),
+        
+        // Vehicle Speed Sensor codes (P05xx)
+        "P0501" to DTCKnowledge("P0501",
+            listOf("Faulty vehicle speed sensor", "Damaged tone ring", "Wiring issue", "ECM failure", "Speedometer gear issue"),
+            listOf("Speedometer not working", "Cruise control inoperative", "Transmission shift problems", "Check Engine Light", "Odometer not working"),
+            listOf("Replace vehicle speed sensor", "Check tone ring", "Repair wiring", "Test ECM", "Check speedometer drive gear")
+        ),
+        "P0502" to DTCKnowledge("P0502",
+            listOf("Faulty vehicle speed sensor", "Open circuit", "Poor connection", "Damaged wiring", "ECM issue"),
+            listOf("Speedometer erratic or zero", "ABS light on", "Traction control issues", "Check Engine Light", "Transmission problems"),
+            listOf("Test vehicle speed sensor", "Check wiring continuity", "Inspect connectors", "Replace sensor if faulty", "Check ECM")
+        ),
+        "P0503" to DTCKnowledge("P0503",
+            listOf("Faulty vehicle speed sensor", "Intermittent connection", "Damaged wiring", "Corroded connector", "Tone ring damage", "ECM/PCM issue"),
+            listOf("Erratic speedometer reading", "Cruise control malfunction", "Transmission shifting problems", "ABS/Traction control warning", "Check Engine Light on", "Intermittent symptoms"),
+            listOf("Inspect vehicle speed sensor connector for corrosion", "Check wiring for damage or chafing", "Test sensor signal with scan tool", "Inspect tone ring for damage", "Replace vehicle speed sensor", "Check for related TSBs")
+        ),
+        "P0504" to DTCKnowledge("P0504",
+            listOf("Misadjusted brake switch", "Faulty brake switch", "Wiring issue", "Incorrect installation", "Multiple switches conflict"),
+            listOf("Brake lights staying on", "Cruise control issues", "Shift interlock problems", "Check Engine Light", "ABS/ESP warnings"),
+            listOf("Adjust brake light switch", "Replace brake switch", "Check wiring", "Verify switch compatibility", "Clear codes and test")
+        ),
+        
+        // Common Thermostat/Cooling codes
+        "P0125" to DTCKnowledge("P0125",
+            listOf("Faulty thermostat stuck open", "Low coolant level", "Faulty coolant temperature sensor", "Wiring issue", "Air in cooling system"),
+            listOf("Engine slow to warm up", "Poor fuel economy", "Heater not working well", "Check Engine Light", "Higher emissions"),
+            listOf("Replace thermostat", "Check coolant level", "Test coolant temperature sensor", "Inspect wiring", "Bleed cooling system")
+        ),
+        "P0128" to DTCKnowledge("P0128",
+            listOf("Stuck open thermostat", "Faulty coolant temperature sensor", "Low coolant", "Cooling fan running constantly", "Faulty wiring"),
+            listOf("Engine takes long to warm up", "Temperature gauge stays low", "Poor heater performance", "Reduced fuel economy", "Check Engine Light"),
+            listOf("Replace thermostat", "Test coolant temperature sensor", "Check coolant level", "Inspect cooling fan operation", "Check wiring")
+        ),
+        
+        // Throttle Position codes
+        "P0120" to DTCKnowledge("P0120",
+            listOf("Faulty throttle position sensor", "Wiring problem", "Poor connection", "Throttle body issue", "PCM failure"),
+            listOf("Rough idle", "Hesitation", "Stalling", "Poor acceleration", "Check Engine Light"),
+            listOf("Test throttle position sensor", "Inspect wiring", "Clean throttle body", "Replace TPS if faulty", "Check PCM")
+        ),
+        "P0121" to DTCKnowledge("P0121",
+            listOf("Faulty TPS", "Carbon buildup on throttle body", "Wiring issue", "Vacuum leak", "PCM problem"),
+            listOf("Poor throttle response", "Stalling", "Surging idle", "Hesitation", "Check Engine Light"),
+            listOf("Clean throttle body", "Test TPS", "Check wiring", "Inspect for vacuum leaks", "Replace TPS if needed")
+        ),
+        "P0122" to DTCKnowledge("P0122",
+            listOf("Faulty TPS", "Open in signal circuit", "Short to ground", "Poor connection", "PCM issue"),
+            listOf("Engine won't accelerate", "Limp mode", "Stalling", "Poor idle", "Check Engine Light"),
+            listOf("Test TPS signal", "Check wiring for open/short", "Inspect connector", "Replace TPS", "Check PCM")
+        ),
+        "P0123" to DTCKnowledge("P0123",
+            listOf("Faulty TPS", "Short to voltage", "Damaged wiring", "Poor connection", "PCM failure"),
+            listOf("High idle", "Surging", "Hesitation", "Poor acceleration", "Check Engine Light"),
+            listOf("Test TPS", "Check wiring for short", "Inspect connections", "Replace TPS", "Test PCM")
+        ),
+        
+        // Knock Sensor codes
+        "P0325" to DTCKnowledge("P0325",
+            listOf("Faulty knock sensor", "Wiring issue", "Poor connection", "Engine mechanical problem", "PCM failure"),
+            listOf("Engine pinging under load", "Reduced power", "Poor fuel economy", "Check Engine Light", "Timing retard"),
+            listOf("Replace knock sensor", "Inspect wiring", "Check for engine mechanical issues", "Test PCM", "Clear codes and verify")
+        ),
+        "P0327" to DTCKnowledge("P0327",
+            listOf("Faulty knock sensor bank 1", "Open circuit", "Poor connection", "Corrosion", "PCM issue"),
+            listOf("Engine knock", "Reduced performance", "Poor fuel economy", "Check Engine Light", "Possible engine damage"),
+            listOf("Test knock sensor", "Check wiring", "Inspect connector", "Replace sensor", "Check for engine issues")
+        ),
+        "P0328" to DTCKnowledge("P0328",
+            listOf("Faulty knock sensor", "Short to voltage", "Wiring damage", "Excessive engine vibration", "PCM problem"),
+            listOf("Engine pinging", "Reduced power", "Poor economy", "Check Engine Light", "Timing issues"),
+            listOf("Test knock sensor", "Inspect wiring", "Check for engine vibration issues", "Replace sensor", "Test PCM")
+        ),
+        
+        // Fuel Rail Pressure codes
+        "P0190" to DTCKnowledge("P0190",
+            listOf("Faulty fuel rail pressure sensor", "Wiring issue", "Low fuel pressure", "Fuel pump failure", "PCM issue"),
+            listOf("Hard starting", "Engine stalling", "Poor performance", "Check Engine Light", "Fuel system issues"),
+            listOf("Test fuel rail pressure sensor", "Check wiring", "Test fuel pressure", "Inspect fuel pump", "Check PCM")
+        ),
+        "P0191" to DTCKnowledge("P0191",
+            listOf("Faulty fuel rail pressure sensor", "Wiring problem", "Fuel pressure issue", "Fuel pump", "Clogged filter"),
+            listOf("Engine performance issues", "Hard starting", "Stalling", "Check Engine Light", "Rough idle"),
+            listOf("Test sensor", "Inspect wiring", "Check fuel pressure", "Replace fuel filter", "Test fuel pump")
+        ),
+        
+        // Common Airbag/SRS codes
+        "B1000" to DTCKnowledge("B1000",
+            listOf("Airbag module fault", "Wiring issue", "Crash sensor problem", "Clock spring failure", "Low battery voltage"),
+            listOf("Airbag warning light on", "Airbag system disabled", "SRS malfunction", "Horn or cruise may not work", "Steering wheel controls inoperative"),
+            listOf("Diagnose with appropriate airbag scan tool", "Check battery voltage", "Inspect clock spring", "Check wiring", "Replace faulty component")
+        ),
+        "B1001" to DTCKnowledge("B1001",
+            listOf("Airbag deployment circuit fault", "Wiring open or short", "Airbag module issue", "Connector problem", "Previous deployment"),
+            listOf("Airbag light on", "System disabled", "Safety concern", "SRS warning", "Diagnostic required"),
+            listOf("Professional diagnosis required", "Check deployment history", "Inspect wiring", "Check connectors", "May need airbag replacement")
+        ),
+        
+        // Common ABS/Chassis codes
+        "C0035" to DTCKnowledge("C0035",
+            listOf("Faulty left front wheel speed sensor", "Damaged tone ring", "Wiring issue", "ABS module problem", "Sensor gap incorrect"),
+            listOf("ABS light on", "Traction control light", "ABS not functioning", "Speedometer issues", "Brake warning"),
+            listOf("Test wheel speed sensor", "Inspect tone ring", "Check wiring", "Verify sensor gap", "Replace sensor if faulty")
+        ),
+        "C0040" to DTCKnowledge("C0040",
+            listOf("Faulty right front wheel speed sensor", "Damaged reluctor ring", "Wiring damage", "ABS module issue", "Bearing failure"),
+            listOf("ABS warning light", "Traction control disabled", "Speedometer error", "ABS activation issues", "Brake problems"),
+            listOf("Test wheel speed sensor", "Inspect reluctor ring", "Check wiring", "Test ABS module", "Check wheel bearing")
+        ),
+        "C0045" to DTCKnowledge("C0045",
+            listOf("Faulty left rear wheel speed sensor", "Tone ring damage", "Wiring issue", "ABS module", "Debris on sensor"),
+            listOf("ABS light on", "Stability control light", "ABS malfunction", "Rear brake issues", "Warning lights"),
+            listOf("Inspect and clean sensor", "Check tone ring", "Test wiring", "Replace sensor", "Check ABS module")
+        ),
+        "C0050" to DTCKnowledge("C0050",
+            listOf("Faulty right rear wheel speed sensor", "Reluctor ring damage", "Wiring problem", "ABS module issue", "Sensor contamination"),
+            listOf("ABS warning", "Traction control light", "ABS not working", "Rear brake anomaly", "Dashboard warnings"),
+            listOf("Clean or replace sensor", "Inspect reluctor ring", "Check wiring", "Test ABS module", "Verify installation")
         )
     )
 
     /**
      * Get knowledge for a DTC code
+     * Returns specific knowledge if available, otherwise generates generic knowledge
      */
     fun getKnowledge(code: String): DTCKnowledge? {
-        return knowledgeBase[code.uppercase().trim()]
+        val normalizedCode = code.uppercase().trim()
+        
+        // First try exact match
+        knowledgeBase[normalizedCode]?.let { return it }
+        
+        // Generate generic knowledge based on code pattern
+        return generateGenericKnowledge(normalizedCode)
+    }
+    
+    /**
+     * Generate generic knowledge based on DTC code pattern
+     * This ensures all DTCs have at least basic information
+     */
+    private fun generateGenericKnowledge(code: String): DTCKnowledge? {
+        if (code.length < 5) return null
+        
+        val category = code[0]
+        val subSystem = code.substring(1, 3)
+        
+        return when (category) {
+            'P' -> generatePowertrainKnowledge(code, subSystem)
+            'B' -> generateBodyKnowledge(code, subSystem)
+            'C' -> generateChassisKnowledge(code, subSystem)
+            'U' -> generateNetworkKnowledge(code, subSystem)
+            else -> null
+        }
+    }
+    
+    private fun generatePowertrainKnowledge(code: String, subSystem: String): DTCKnowledge {
+        val systemName = when {
+            subSystem.startsWith("01") || subSystem.startsWith("02") -> "Fuel/Air Metering"
+            subSystem.startsWith("03") || subSystem.startsWith("04") -> "Ignition System"
+            subSystem.startsWith("05") -> "Vehicle Speed/Idle Control"
+            subSystem.startsWith("06") -> "Computer Output Circuit"
+            subSystem.startsWith("07") || subSystem.startsWith("08") -> "Transmission"
+            subSystem.startsWith("0") -> "Fuel/Air Metering"
+            subSystem.startsWith("1") -> "Fuel/Air Metering (Manufacturer)"
+            subSystem.startsWith("2") -> "Fuel/Air Metering (Injector)"
+            subSystem.startsWith("3") -> "Ignition/Misfire"
+            subSystem.startsWith("4") -> "Emission Control"
+            subSystem.startsWith("5") -> "Vehicle Speed/Idle/Auxiliary"
+            subSystem.startsWith("6") -> "Computer/Auxiliary"
+            subSystem.startsWith("7") || subSystem.startsWith("8") || subSystem.startsWith("9") -> "Transmission"
+            else -> "Powertrain"
+        }
+        
+        return DTCKnowledge(
+            code = code,
+            possibleCauses = listOf(
+                "Faulty sensor or actuator in $systemName system",
+                "Wiring or connector issue",
+                "Poor electrical connection",
+                "ECU/PCM malfunction",
+                "Related component failure"
+            ),
+            symptoms = listOf(
+                "Check Engine Light illuminated",
+                "Reduced engine performance",
+                "Poor fuel economy",
+                "Engine hesitation or rough idle",
+                "Possible drivability issues"
+            ),
+            solutions = listOf(
+                "Scan for related trouble codes",
+                "Inspect wiring and connectors",
+                "Test suspected sensor/actuator",
+                "Check for technical service bulletins (TSB)",
+                "Clear codes and test drive to verify repair"
+            )
+        )
+    }
+    
+    private fun generateBodyKnowledge(code: String, subSystem: String): DTCKnowledge {
+        val systemName = when {
+            subSystem.startsWith("1") -> "Body Control"
+            subSystem.startsWith("2") -> "Occupant Protection"
+            subSystem.startsWith("3") -> "Restraint System"
+            subSystem.startsWith("4") -> "HVAC/Climate Control"
+            subSystem.startsWith("5") -> "Information/Warning"
+            subSystem.startsWith("6") -> "Auxiliary/Accessory"
+            subSystem.startsWith("7") -> "Transfer Case"
+            else -> "Body Electronics"
+        }
+        
+        return DTCKnowledge(
+            code = code,
+            possibleCauses = listOf(
+                "Faulty $systemName module or sensor",
+                "Wiring harness damage or corrosion",
+                "Poor ground connection",
+                "Body control module (BCM) issue",
+                "Related fuse or relay failure"
+            ),
+            symptoms = listOf(
+                "Warning light on dashboard",
+                "System malfunction",
+                "Intermittent operation",
+                "Complete system failure",
+                "Diagnostic trouble code stored"
+            ),
+            solutions = listOf(
+                "Check fuses and relays",
+                "Inspect wiring and ground connections",
+                "Test affected component",
+                "Check for water intrusion",
+                "Consult service manual for specific procedures"
+            )
+        )
+    }
+    
+    private fun generateChassisKnowledge(code: String, subSystem: String): DTCKnowledge {
+        val systemName = when {
+            subSystem.startsWith("0") -> "ABS/Traction Control"
+            subSystem.startsWith("1") -> "ABS/Brake System"
+            subSystem.startsWith("2") -> "ABS/Wheel Speed"
+            subSystem.startsWith("3") -> "ABS/Pressure"
+            subSystem.startsWith("4") -> "Stability Control"
+            else -> "Chassis System"
+        }
+        
+        return DTCKnowledge(
+            code = code,
+            possibleCauses = listOf(
+                "Faulty wheel speed sensor",
+                "ABS module malfunction",
+                "Wiring or connector issue",
+                "Low brake fluid level",
+                "Damaged tone ring or reluctor"
+            ),
+            symptoms = listOf(
+                "ABS warning light on",
+                "Traction control light on",
+                "Stability control disabled",
+                "Unusual brake pedal feel",
+                "ABS not functioning properly"
+            ),
+            solutions = listOf(
+                "Check wheel speed sensors",
+                "Inspect brake fluid level and condition",
+                "Test ABS module communication",
+                "Check for damaged tone rings",
+                "Verify sensor air gaps"
+            )
+        )
+    }
+    
+    private fun generateNetworkKnowledge(code: String, subSystem: String): DTCKnowledge {
+        val moduleName = when {
+            subSystem == "01" -> "ECM/PCM"
+            subSystem == "02" -> "TCM"
+            subSystem == "03" -> "ABS"
+            subSystem == "04" -> "Body Control"
+            subSystem == "05" -> "Climate Control"
+            subSystem == "06" -> "Audio/Entertainment"
+            subSystem == "07" -> "Gateway"
+            subSystem == "10" -> "Instrument Panel"
+            subSystem == "11" -> "Air Suspension"
+            subSystem == "12" -> "Steering"
+            subSystem == "14" -> "4WD Module"
+            else -> "Control Module"
+        }
+        
+        return DTCKnowledge(
+            code = code,
+            possibleCauses = listOf(
+                "Lost communication with $moduleName",
+                "CAN bus wiring issue (open or short)",
+                "Control module failure",
+                "Poor ground connection",
+                "Power supply issue to module"
+            ),
+            symptoms = listOf(
+                "Multiple warning lights",
+                "System not responding",
+                "Intermittent operation",
+                "Communication errors",
+                "Module not detected on network"
+            ),
+            solutions = listOf(
+                "Check CAN bus wiring for damage",
+                "Test module power and ground",
+                "Inspect all connectors",
+                "Check for proper termination",
+                "Test module communication with scan tool"
+            )
+        )
     }
 
     /**
