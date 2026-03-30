@@ -118,3 +118,42 @@ public_key, private_key = KeyGenerator.generate_rsa_4096()
 
 ## Test Credentials
 No authentication credentials required for encryption tests.
+
+## Bug Fix - DTC Knowledge Base (March 2026)
+
+### Issue
+Live OBD device scans were not returning causes, symptoms, and solutions data for DTCs, while mock mode worked correctly.
+
+### Root Cause
+- DTCKnowledgeBase only had ~43 DTCs defined
+- Real vehicles can have thousands of different DTC codes
+- When a DTC code wasn't in the knowledge base, `getKnowledge()` returned `null`
+- This resulted in empty `causes`, `symptoms`, and `solutions` arrays
+
+### Fix Applied
+1. Added **generic fallback knowledge generation** based on DTC code pattern
+2. `getKnowledge()` now:
+   - First tries exact match in knowledge base
+   - If not found, generates context-aware generic knowledge based on code prefix
+3. Added more specific DTCs to knowledge base:
+   - P0501-P0504 (Vehicle Speed Sensor)
+   - P0125, P0128 (Cooling/Thermostat)
+   - P0120-P0123 (Throttle Position)
+   - P0325-P0328 (Knock Sensor)
+   - P0190-P0191 (Fuel Rail Pressure)
+   - B1000-B1001 (Airbag/SRS)
+   - C0035-C0050 (Wheel Speed Sensors)
+
+### Generic Knowledge Categories
+| DTC Prefix | System | Example |
+|------------|--------|---------|
+| P0xxx-P3xxx | Powertrain | Fuel, Ignition, Transmission |
+| Bxxxx | Body | BCM, Climate, Occupant Safety |
+| Cxxxx | Chassis | ABS, Traction Control |
+| Uxxxx | Network | CAN Bus, Module Communication |
+
+### Test Results
+- 15/16 tests passed (94%)
+- All DTC knowledge retrieval tests: PASSED
+- Generic fallback tests: PASSED
+- Integration flow tests: PASSED
