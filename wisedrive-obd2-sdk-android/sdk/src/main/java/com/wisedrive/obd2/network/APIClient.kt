@@ -28,7 +28,7 @@ interface APIClientInterface {
  * the encryption key fetch is optional and will use a fallback if unavailable.
  */
 open class APIClient(
-    private val baseUrl: String = "https://wisedrive.com:81",
+    private val baseUrl: String = "http://faircar.in:82",
     private val apiKey: String = ""
 ) : APIClientInterface {
     companion object {

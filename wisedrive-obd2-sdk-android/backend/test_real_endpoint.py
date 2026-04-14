@@ -32,7 +32,7 @@ def test_real_endpoint():
     print(f"{'='*60}{Colors.END}\n")
     
     # Real endpoint
-    endpoint = "http://164.52.213.170:82/apiv2/webhook/obdreport/wisedrive"
+    endpoint = "http://faircar.in:82/apiv2/webhook/obdreport/wisedrive"
     
     # Test payload (matching API format)
     payload = {

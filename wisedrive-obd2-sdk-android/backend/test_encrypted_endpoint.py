@@ -105,8 +105,8 @@ def test_encrypted_endpoint():
     print(f"{Colors.GREEN}✓ Keys generated{Colors.END}")
     
     # Endpoint for encrypted data
-    encrypted_endpoint = "http://164.52.213.170:82/apiv2/webhook/obdreport/wisedrive/encrypted"
-    legacy_endpoint = "http://164.52.213.170:82/apiv2/webhook/obdreport/wisedrive"
+    encrypted_endpoint = "http://faircar.in:82/apiv2/webhook/obdreport/wisedrive/encrypted"
+    legacy_endpoint = "http://faircar.in:82/apiv2/webhook/obdreport/wisedrive"
     
     # OBD scan data
     scan_data = {

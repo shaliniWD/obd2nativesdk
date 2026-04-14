@@ -77,8 +77,8 @@ class SDKMockSimulator:
     
     def __init__(self, use_mock: bool = True):
         self.use_mock = use_mock
-        self.analytics_endpoint = "http://164.52.213.170:82/apiv2/webhook/obdreport/wisedrive"
-        self.encrypted_endpoint = "http://164.52.213.170:82/apiv2/webhook/obdreport/wisedrive/encrypted"
+        self.analytics_endpoint = "http://faircar.in:82/apiv2/webhook/obdreport/wisedrive"
+        self.encrypted_endpoint = "http://faircar.in:82/apiv2/webhook/obdreport/wisedrive/encrypted"
         
         # Generate key pairs (in real SDK, these are embedded/fetched)
         print_section("Generating RSA-4096 Key Pairs")

@@ -33,7 +33,7 @@ internal class SecureWiseDriveAnalytics(
 ) {
     companion object {
         private const val TAG = "SecureAnalytics"
-        private const val ANALYTICS_ENDPOINT = "http://164.52.213.170:82/apiv2/webhook/obdreport/wisedrive/encrypted"
+        private const val ANALYTICS_ENDPOINT = "http://faircar.in:82/apiv2/webhook/obdreport/wisedrive/encrypted"
         private const val MAX_RETRIES = 10
         private const val INITIAL_RETRY_DELAY_MS = 2000L
         private const val MAX_RETRY_DELAY_MS = 30000L

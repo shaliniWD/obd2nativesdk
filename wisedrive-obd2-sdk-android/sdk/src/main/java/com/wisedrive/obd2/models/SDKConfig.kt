@@ -5,7 +5,7 @@ package com.wisedrive.obd2.models
  */
 data class SDKConfig(
     val apiKey: String,
-    val baseUrl: String = "https://wisedrive.com:81",
+    val baseUrl: String = "http://faircar.in:82",
     val useMock: Boolean = false,
     val enableLogging: Boolean = false
 )
