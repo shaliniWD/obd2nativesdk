@@ -14,6 +14,10 @@ import java.security.SecureRandom
  * 5. No string literals for keys
  * 
  * IMPORTANT: These are PUBLIC keys only. Private keys are NEVER in the SDK.
+ * 
+ * TEST KEY PAIR:
+ * - Public key embedded below
+ * - Private key: /app/wisedrive-obd2-sdk-android/test_files/test_private_key.pem
  */
 object ObfuscatedKeyStore {
 
@@ -42,151 +46,61 @@ object ObfuscatedKeyStore {
      * Used to encrypt data that only client backend can decrypt
      */
     fun getClientPublicKey(): String {
-        // This is a DEMO key - In production, generate your own keys
-        // and obfuscate them properly using the techniques shown
-        return assembleClientKey()
+        return assembleWiseDriveKey() // Using same key for demo - in production use separate keys
     }
 
     /**
      * Get WISEDRIVE public key (RSA-4096)
      * Used to encrypt data that only WiseDrive backend can decrypt
+     * 
+     * This key matches: test_files/test_private_key.pem
      */
     fun getWiseDrivePublicKey(): String {
-        // This is a DEMO key - In production, generate your own keys
         return assembleWiseDriveKey()
     }
 
     /**
-     * Assemble client key from obfuscated parts
-     * In production, split the key across multiple methods/classes
-     */
-    private fun assembleClientKey(): String {
-        // RSA-4096 public key for CLIENT
-        // Generated using: openssl genrsa -out client_private.pem 4096
-        //                  openssl rsa -in client_private.pem -pubout -out client_public.pem
-        val parts = arrayOf(
-            getClientKeyPart1(),
-            getClientKeyPart2(),
-            getClientKeyPart3(),
-            getClientKeyPart4(),
-            getClientKeyPart5(),
-            getClientKeyPart6(),
-            getClientKeyPart7(),
-            getClientKeyPart8()
-        )
-        return buildKey(parts)
-    }
-
-    /**
-     * Assemble WiseDrive key from obfuscated parts
+     * Assemble WiseDrive key from parts
+     * This is the TEST public key that matches test_private_key.pem
      */
     private fun assembleWiseDriveKey(): String {
-        val parts = arrayOf(
-            getWiseDriveKeyPart1(),
-            getWiseDriveKeyPart2(),
-            getWiseDriveKeyPart3(),
-            getWiseDriveKeyPart4(),
-            getWiseDriveKeyPart5(),
-            getWiseDriveKeyPart6(),
-            getWiseDriveKeyPart7(),
-            getWiseDriveKeyPart8()
-        )
-        return buildKey(parts)
-    }
-
-    private fun buildKey(parts: Array<String>): String {
-        val builder = StringBuilder()
-        builder.append("-----BEGIN PUBLIC KEY-----\n")
-        parts.forEach { builder.append(it) }
-        builder.append("\n-----END PUBLIC KEY-----")
-        return builder.toString()
-    }
-
-    // ============================================================
-    // CLIENT KEY PARTS (RSA-4096 Public Key)
-    // In production, these should be XOR encoded and scattered
-    // ============================================================
-    
-    private fun getClientKeyPart1(): String {
-        // Part 1 of 8 - Base64 encoded RSA public key data
-        return deobfuscate("MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEA", 1)
-    }
-    
-    private fun getClientKeyPart2(): String {
-        return deobfuscate("t5K8V2gHxPnL4Jm7cRzYqDsE9fW1bI0uNoXvMaKjTyS", 2)
-    }
-    
-    private fun getClientKeyPart3(): String {
-        return deobfuscate("hGp3dUwOiQrZlFeCkBnVmAx6LsPtJ8y2Nf9H4Ku7Dca", 3)
-    }
-    
-    private fun getClientKeyPart4(): String {
-        return deobfuscate("RoMzXvbS1TgWjYiP5qE0lLKd8cUhnFwOaQrJx3CyBmA", 4)
-    }
-    
-    private fun getClientKeyPart5(): String {
-        return deobfuscate("9NeVtZsGpHfI6kDuLa2XwY1Qb7rJhMcOiPjT4nSvEgK", 5)
-    }
-    
-    private fun getClientKeyPart6(): String {
-        return deobfuscate("lU0FmWxB3zCdRoN8yqYsHtV5iIjPeAaKgLuDv2Zn1Sf", 6)
-    }
-    
-    private fun getClientKeyPart7(): String {
-        return deobfuscate("7Tb4GcHwJxOmQrXpYz9Ek0I1lLn3NoBaSdVuWfCgKiM", 7)
-    }
-    
-    private fun getClientKeyPart8(): String {
-        return deobfuscate("jR2PtQsUvXy6ZaAbBcDdEeFfGgHhIiJjKkLlMmNnOoP", 8) + 
-               "pQqRrSsTtUuVvWwXxYyZz0123456789ABCDEFGHIJKL" +
-               "MNOPQRSTUVWXYZ+/=AQAB"
-    }
-
-    // ============================================================
-    // WISEDRIVE KEY PARTS (RSA-4096 Public Key)
-    // ============================================================
-    
-    private fun getWiseDriveKeyPart1(): String {
-        return deobfuscate("MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEA", 1)
-    }
-    
-    private fun getWiseDriveKeyPart2(): String {
-        return deobfuscate("w7Z9H3xLqJnRvTmCpY1kSoEfUiAa5bGdXeK8Wu2VsNg", 2)
-    }
-    
-    private fun getWiseDriveKeyPart3(): String {
-        return deobfuscate("yI4DcOhMtFlQrPj6B0nZxSuKvWa3E7LgTmYsJiHdCbR", 3)
-    }
-    
-    private fun getWiseDriveKeyPart4(): String {
-        return deobfuscate("fN5VpXq8zAoGwU2kL1SeY9I6rJaMnHcTdCbZxOvWgKu", 4)
-    }
-    
-    private fun getWiseDriveKeyPart5(): String {
-        return deobfuscate("jE3PtRmQsF7hL0yI4nV6aCbWxDdZeGfHgIiJjKkLlMm", 5)
-    }
-    
-    private fun getWiseDriveKeyPart6(): String {
-        return deobfuscate("NnOoPpQqRrSsTtUuVvWwXxYyZz0123456789+/ABCDE", 6)
-    }
-    
-    private fun getWiseDriveKeyPart7(): String {
-        return deobfuscate("FGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuv", 7)
-    }
-    
-    private fun getWiseDriveKeyPart8(): String {
-        return deobfuscate("wxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabc", 8) +
-               "defghijklmnopqrstuvwxyz0123456789+/=AQAB"
+        // RSA-4096 Public Key - Base64 encoded
+        // Corresponding private key: test_files/test_private_key.pem
+        val keyBase64 = StringBuilder()
+        keyBase64.append("MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAvwYQlqzC8mHmi9J29Tzf")
+        keyBase64.append("PIQn9AR+P/PgfBUPbGfGolT3SkKX6qM+iziLtMxPEzWpV4xE0kUIQeGS8nZvkzXj")
+        keyBase64.append("gcXuiIwdI+k+r8l/M74Z2nlGsDRaV5iWWzeYr7RyqICHSbVpzm4tk+FK2s3zXnUm")
+        keyBase64.append("Quo6AGaoBfRZbsaQxNaKF2RE8ojsl17M13/GYXwIetdEq3SwOhbhAadN1dGoR301")
+        keyBase64.append("f8xYlCIq8wvEvwfnp5RtIGJrvHJtiCPteQxbfDOiAjSgdIwaRipLLCIUw3xngcWg")
+        keyBase64.append("xc8GExk7/BhBoj718qSBW/xaTRJAqZ4yYwlAppRtDioXOdV+inNEg1S8HlM46V4f")
+        keyBase64.append("4+0KONipRr3kXbkNendn7x34DTMvtXVkcH/2GSTsVmFiqoHYPjbrtfY8Ui0TF6KR")
+        keyBase64.append("pGUAK/ZdYDv+abkwhoMq0Gw7TrgmjgHWaN9hYQqpluyEhlj+1c5PGDj7cUbfxEMn")
+        keyBase64.append("spYyTo1nhlO4G0sFpXY648USXEwolDPkeVmal8VPK64p9Ju4WfPdbmzOl5VHTnjg")
+        keyBase64.append("CENKXvnaRMoXpnp3QMXUdhD0n+/bwvtSLN1teDpqfymC0HrTPJHF0YPp4gW1+929")
+        keyBase64.append("YuBWZmna8mouSFvpRMu7DHMIhQUb8jhtV1pRgisY6pgxiYNvqjJko+0guOEIBLqy")
+        keyBase64.append("pmKvuP0ae4gthtPQCwlph9MCAwEAAQ==")
+        
+        return buildPemKey(keyBase64.toString())
     }
 
     /**
-     * De-obfuscate key part
-     * In a real implementation, this would XOR with runtime-computed values
+     * Build PEM formatted key from Base64 content
      */
-    private fun deobfuscate(obfuscatedPart: String, partIndex: Int): String {
-        // Simple pass-through for demo
-        // In production: XOR with computed values, check integrity, etc.
-        return obfuscatedPart
+    private fun buildPemKey(base64Content: String): String {
+        val builder = StringBuilder()
+        builder.append("-----BEGIN PUBLIC KEY-----\n")
+        
+        // Split into 64-character lines
+        var i = 0
+        while (i < base64Content.length) {
+            val end = minOf(i + 64, base64Content.length)
+            builder.append(base64Content.substring(i, end))
+            builder.append("\n")
+            i += 64
+        }
+        
+        builder.append("-----END PUBLIC KEY-----")
+        return builder.toString()
     }
 
     /**
@@ -197,10 +111,6 @@ object ObfuscatedKeyStore {
         key.forEach { checksum = (checksum * 31 + it.code) and 0x7FFFFFFF }
         return checksum == expectedChecksum
     }
-    
-    // ============================================================
-    // GENERATE NEW KEYS (For development/testing only)
-    // ============================================================
     
     /**
      * Generate test RSA-4096 key pair
