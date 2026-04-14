@@ -69,15 +69,17 @@ class AdvancedEncryptionManager {
     /**
      * Initialize encryption with public keys
      * Keys are fetched from ObfuscatedKeyStore
+     * @param externalClientPublicKey Optional client's public key (PEM format)
      */
-    fun initialize(): Boolean {
+    fun initialize(externalClientPublicKey: String? = null): Boolean {
         return try {
-            // Load obfuscated public keys
-            val clientKeyPem = ObfuscatedKeyStore.getClientPublicKey()
+            // Load WiseDrive public key (always from ObfuscatedKeyStore)
             val wiseDriveKeyPem = ObfuscatedKeyStore.getWiseDrivePublicKey()
-            
-            clientPublicKey = loadPublicKey(clientKeyPem)
             wiseDrivePublicKey = loadPublicKey(wiseDriveKeyPem)
+            
+            // Load client public key - use external if provided, otherwise from store
+            val clientKeyPem = externalClientPublicKey ?: ObfuscatedKeyStore.getClientPublicKey()
+            clientPublicKey = loadPublicKey(clientKeyPem)
             
             currentKeyId = ObfuscatedKeyStore.getCurrentKeyId()
             
