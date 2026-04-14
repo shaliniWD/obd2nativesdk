@@ -1,0 +1,92 @@
+{
+  "license_plate": "MH12AB1234",
+  "tracking_id": "ORD6894331",
+  "report_url": "https://wisedrive.in/reports/ORD6894331.pdf",
+  "car_company": "Hyundai",
+  "status": 1,
+  "time": "2026-04-14T14:59:19.229Z",
+  "mechanic_name": "WiseDrive Scanner",
+  "mechanic_email": "scanner@wisedrive.in",
+  "vin": "MALA851CLJM123456",
+  "mil_status": true,
+  "scan_ended": "automatic_success",
+  "faulty_modules": [
+    "Engine Control Module (ECM)",
+    "ABS/ESP Control Module"
+  ],
+  "non_faulty_modules": [
+    "Transmission Control Module",
+    "Body Control Module",
+    "Airbag Control Module",
+    "HVAC Control Module",
+    "Electric Power Steering",
+    "Instrument Cluster",
+    "Infotainment System",
+    "Immobilizer"
+  ],
+  "code_details": [
+    {
+      "dtc": "P0503",
+      "meaning": "Vehicle Speed Sensor A Circuit Intermittent/Erratic/High",
+      "module": "Engine Control Module (ECM)",
+      "status": "Confirmed",
+      "descriptions": [
+        "The vehicle speed sensor signal is erratic or intermittent",
+        "ECM detected inconsistent speed readings"
+      ],
+      "causes": [
+        "Faulty vehicle speed sensor",
+        "Damaged wiring or connectors",
+        "Poor electrical connection",
+        "Corroded sensor connector",
+        "Damaged tone ring",
+        "ECM/PCM malfunction"
+      ],
+      "symptoms": [
+        "Erratic speedometer reading",
+        "Cruise control malfunction",
+        "Transmission shifting problems",
+        "ABS/Traction control warning",
+        "Check Engine Light on",
+        "Intermittent symptoms"
+      ],
+      "solutions": [
+        "Inspect vehicle speed sensor connector for corrosion",
+        "Check wiring for damage or chafing",
+        "Test sensor signal with scan tool",
+        "Inspect tone ring for damage",
+        "Replace vehicle speed sensor",
+        "Check for related TSBs"
+      ]
+    },
+    {
+      "dtc": "C1201",
+      "meaning": "Engine Control System Malfunction",
+      "module": "ABS/ESP Control Module",
+      "status": "Confirmed",
+      "descriptions": [
+        "ABS module detected engine control system issue",
+        "Communication with ECM shows fault present"
+      ],
+      "causes": [
+        "Engine DTCs present causing ABS to set code",
+        "Communication error between modules",
+        "Low battery voltage",
+        "Faulty ABS module"
+      ],
+      "symptoms": [
+        "ABS warning light on",
+        "Traction control light on",
+        "VSC/Stability control disabled",
+        "Multiple warning lights"
+      ],
+      "solutions": [
+        "Fix engine DTCs first (P0503)",
+        "Clear all codes after repair",
+        "Check battery voltage",
+        "Verify CAN bus communication"
+      ]
+    }
+  ],
+  "battery_voltage": 14.02
+}
