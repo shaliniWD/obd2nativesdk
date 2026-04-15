@@ -10,12 +10,10 @@
 
 ## JFrog Artifactory
 - User: kalyan@wisedrive.in
-- Token: cb02a0f4-5bc9-44eb-a6f0-70c88b811b55
+- Token: cmVmdGtuOjAxOjE4MDc4MTQ3ODE6ZGFDWDFMbXJuQ1VNSUpodUtDWGNwcWxza2Zn
+- Snapshots: https://wisedrive.jfrog.io/artifactory/wisedrive-sdk-snapshots
+- Releases: https://wisedrive.jfrog.io/artifactory/wisedrive-sdk-releases
 
 ## Test RSA Keys
 - Private Key: /app/wisedrive-obd2-sdk-android/test_files/test_private_key.pem
 - Public Key: /app/wisedrive-obd2-sdk-android/test_files/test_public_key.pem
-
-## Legacy Credentials (old endpoint - deprecated)
-- Old Endpoint: http://faircar.in:82/apiv2/webhook/obdreport/wisedrive/encrypted
-- Old Auth: Basic prasad:prasad@123
