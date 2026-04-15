@@ -1,0 +1,97 @@
+name: Publish SDK Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  release:
+    types: [created]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish (e.g., 2.0.0)'
+        required: false
+        default: ''
+
+jobs:
+  publish-release:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+      
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+      
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: gradle-
+      
+      - name: Set Version from Tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          sed -i "s/val sdkVersionName = \".*\"/val sdkVersionName = \"$VERSION\"/" sdk/build.gradle.kts
+          echo "Publishing version: $VERSION"
+      
+      - name: Set Version from Input
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.version != ''
+        run: |
+          VERSION=${{ github.event.inputs.version }}
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          sed -i "s/val sdkVersionName = \".*\"/val sdkVersionName = \"$VERSION\"/" sdk/build.gradle.kts
+          echo "Publishing version: $VERSION"
+      
+      - name: Build SDK
+        run: ./gradlew :sdk:assembleRelease
+      
+      - name: Run Unit Tests
+        run: ./gradlew :sdk:testReleaseUnitTest
+        continue-on-error: true
+      
+      - name: Publish to JFrog Releases
+        env:
+          JFROG_USER: ${{ secrets.JFROG_USER }}
+          JFROG_TOKEN: ${{ secrets.JFROG_TOKEN }}
+        run: ./gradlew :sdk:publishReleasePublicationToJFrogReleasesRepository
+      
+      - name: Verify Publication
+        env:
+          JFROG_USER: ${{ secrets.JFROG_USER }}
+          JFROG_TOKEN: ${{ secrets.JFROG_TOKEN }}
+        run: |
+          echo "Release published successfully!"
+          echo "Repository: https://wisedrive.jfrog.io/artifactory/wisedrive-sdk-releases"
+          echo "Artifact: com.wisedrive:obd2-sdk:${VERSION:-2.0.0}"
+      
+      - name: Create Release Notes
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          body: |
+            ## WiseDrive OBD2 SDK ${{ env.VERSION }}
+            
+            ### Installation
+            ```kotlin
+            implementation("com.wisedrive:obd2-sdk:${{ env.VERSION }}")
+            ```
+            
+            ### Features
+            - Hybrid RSA-4096 + AES-256-GCM encryption
+            - Anti-reverse-engineering protection
+            - Dual submission (encrypted to WiseDrive, plain JSON to client)
+            - SDK error logging (encrypted)

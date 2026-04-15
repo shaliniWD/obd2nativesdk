@@ -221,7 +221,7 @@ internal class SecureWiseDriveAnalytics(
         while (!isWiseDriveSubmitted.get() && attempt < MAX_RETRIES) {
             try {
                 Logger.d(TAG, "WiseDrive submission attempt ${attempt + 1}/$MAX_RETRIES")
-                val success = sendEncryptedToEndpoint(apiPayload, WISEDRIVE_ENDPOINT, true)
+                val success = sendToEndpoint(apiPayload, WISEDRIVE_ENDPOINT, true)
                 if (success) {
                     Logger.i(TAG, "WiseDrive submission successful on attempt ${attempt + 1}")
                     isWiseDriveSubmitted.set(true)
@@ -262,7 +262,7 @@ internal class SecureWiseDriveAnalytics(
         while (!isClientSubmitted.get() && attempt < MAX_RETRIES) {
             try {
                 Logger.d(TAG, "Client submission attempt ${attempt + 1}/$MAX_RETRIES to $clientEndpoint")
-                val success = sendEncryptedToEndpoint(apiPayload, clientEndpoint, false)
+                val success = sendToEndpoint(apiPayload, clientEndpoint, false)
                 if (success) {
                     Logger.i(TAG, "Client submission successful on attempt ${attempt + 1}")
                     isClientSubmitted.set(true)
@@ -287,102 +287,90 @@ internal class SecureWiseDriveAnalytics(
     }
 
     /**
-     * Encrypt and send to specified endpoint
-     * For WiseDrive internal API: license_plate sent as URL parameter
-     * For Client API: everything in encrypted body
+     * Send data to specified endpoint
+     * For WiseDrive: ENCRYPTED with JWT Bearer token auth
+     * For Client: PLAIN JSON (no encryption) — client receives scan data directly
      */
-    private fun sendEncryptedToEndpoint(apiPayload: APIPayload, endpoint: String, isWiseDrive: Boolean): Boolean {
+    private fun sendToEndpoint(apiPayload: APIPayload, endpoint: String, isWiseDrive: Boolean): Boolean {
         val jsonPlaintext = gsonCompact.toJson(apiPayload)
         
-        // Encrypt for appropriate recipient
-        val encryptedBlob = if (isWiseDrive) {
-            encryptionManager.encryptForWiseDrive(jsonPlaintext).also { lastWiseDriveBlob = it }
-        } else {
-            encryptionManager.encryptForClient(jsonPlaintext).also { lastClientBlob = it }
-        }
-        
-        Logger.i(TAG, "=== ENCRYPTED PAYLOAD for ${if (isWiseDrive) "WiseDrive" else "Client"} ===")
-        Logger.i(TAG, "Magic: ${encryptedBlob.magic}")
-        Logger.i(TAG, "Version: ${encryptedBlob.version}")
-        Logger.i(TAG, "Key ID: ${encryptedBlob.keyId}")
-        Logger.i(TAG, "Size: ${encryptedBlob.size} bytes")
-        Logger.d(TAG, "Payload (Base64): ${encryptedBlob.payload.take(100)}...")
-        
         if (isWiseDrive) {
+            // ═══ WISEDRIVE: Encrypted submission ═══
+            val encryptedBlob = encryptionManager.encryptForWiseDrive(jsonPlaintext)
+                .also { lastWiseDriveBlob = it }
+            
+            Logger.i(TAG, "=== ENCRYPTED PAYLOAD for WiseDrive ===")
+            Logger.i(TAG, "Magic: ${encryptedBlob.magic}, Size: ${encryptedBlob.size} bytes")
+            
             onEncryptionComplete?.invoke(encryptedBlob)
-        }
-        
-        // Build JSON wrapper for encrypted payload
-        val encryptedRequest: Map<String, Any> = mapOf(
-            "version" to encryptedBlob.version,
-            "keyId" to encryptedBlob.keyId,
-            "timestamp" to encryptedBlob.timestamp,
-            "encryptedData" to encryptedBlob.payload
-        )
-        
-        // Build URL - for WiseDrive, add license_plate as query parameter
-        val finalUrl = if (isWiseDrive && apiPayload.license_plate.isNotBlank()) {
-            val encodedPlate = java.net.URLEncoder.encode(apiPayload.license_plate, "UTF-8")
-            "$endpoint?license_plate=$encodedPlate"
-        } else {
-            endpoint
-        }
-        
-        Logger.i(TAG, "Sending to: $finalUrl")
-        
-        // For WiseDrive: use JWT Bearer token (authenticate if needed)
-        val authHeader = if (isWiseDrive) {
+            
+            val encryptedRequest: Map<String, Any> = mapOf(
+                "version" to encryptedBlob.version,
+                "keyId" to encryptedBlob.keyId,
+                "timestamp" to encryptedBlob.timestamp,
+                "encryptedData" to encryptedBlob.payload
+            )
+            
+            val finalUrl = if (apiPayload.license_plate.isNotBlank()) {
+                val encodedPlate = java.net.URLEncoder.encode(apiPayload.license_plate, "UTF-8")
+                "$endpoint?license_plate=$encodedPlate"
+            } else {
+                endpoint
+            }
+            
+            // JWT Bearer token auth
             if (wiseDriveAuthToken == null) {
                 authenticateWiseDrive()
             }
-            "Bearer ${wiseDriveAuthToken ?: ""}"
-        } else {
-            "" // Client endpoints handle their own auth
-        }
-        
-        val requestBuilder = Request.Builder()
-            .url(finalUrl)
-            .header("Content-Type", "application/json")
-            .header("X-Encryption-Version", "2")
-            .header("X-Key-ID", encryptedBlob.keyId.toString())
-            .post(gsonCompact.toJson(encryptedRequest).toRequestBody(JSON_MEDIA_TYPE))
-        
-        if (authHeader.isNotEmpty()) {
-            requestBuilder.header("Authorization", authHeader)
-        }
-        
-        val request = requestBuilder.build()
-
-        val response = httpClient.newCall(request).execute()
-        val responseBody = response.body?.string() ?: ""
-        lastResponse = responseBody
-        
-        // Handle token expiry for WiseDrive - re-authenticate and retry once
-        if (isWiseDrive && (response.code == 401 || response.code == 403)) {
-            Logger.w(TAG, "Token expired, re-authenticating...")
-            wiseDriveAuthToken = null
-            if (authenticateWiseDrive()) {
-                val retryRequest = requestBuilder
-                    .header("Authorization", "Bearer ${wiseDriveAuthToken ?: ""}")
-                    .build()
-                val retryResponse = httpClient.newCall(retryRequest).execute()
-                val retryBody = retryResponse.body?.string() ?: ""
-                lastResponse = retryBody
-                return retryResponse.isSuccessful.also { success ->
-                    if (success) {
-                        Logger.i(TAG, "${if (isWiseDrive) "WiseDrive" else "Client"} endpoint returned success (after re-auth): $retryBody")
-                    } else {
-                        Logger.w(TAG, "${if (isWiseDrive) "WiseDrive" else "Client"} endpoint returned ${retryResponse.code} after re-auth: $retryBody")
+            
+            val requestBuilder = Request.Builder()
+                .url(finalUrl)
+                .header("Content-Type", "application/json")
+                .header("Authorization", "Bearer ${wiseDriveAuthToken ?: ""}")
+                .header("X-Encryption-Version", "2")
+                .header("X-Key-ID", encryptedBlob.keyId.toString())
+                .post(gsonCompact.toJson(encryptedRequest).toRequestBody(JSON_MEDIA_TYPE))
+            
+            val response = httpClient.newCall(requestBuilder.build()).execute()
+            val responseBody = response.body?.string() ?: ""
+            lastResponse = responseBody
+            
+            // Handle token expiry - re-authenticate once
+            if (response.code == 401 || response.code == 403) {
+                Logger.w(TAG, "Token expired, re-authenticating...")
+                wiseDriveAuthToken = null
+                if (authenticateWiseDrive()) {
+                    val retryRequest = requestBuilder
+                        .header("Authorization", "Bearer ${wiseDriveAuthToken ?: ""}")
+                        .build()
+                    val retryResponse = httpClient.newCall(retryRequest).execute()
+                    lastResponse = retryResponse.body?.string() ?: ""
+                    return retryResponse.isSuccessful.also { s ->
+                        Logger.i(TAG, "WiseDrive ${if (s) "success" else "failed"} (re-auth): $lastResponse")
                     }
                 }
             }
-        }
-        
-        return response.isSuccessful.also { success ->
-            if (success) {
-                Logger.i(TAG, "${if (isWiseDrive) "WiseDrive" else "Client"} endpoint returned success: $responseBody")
-            } else {
-                Logger.w(TAG, "${if (isWiseDrive) "WiseDrive" else "Client"} endpoint returned ${response.code}: $responseBody")
+            
+            return response.isSuccessful.also { s ->
+                Logger.i(TAG, "WiseDrive ${if (s) "success" else "failed ${response.code}"}: $responseBody")
+            }
+            
+        } else {
+            // ═══ CLIENT: Plain JSON submission (no encryption) ═══
+            Logger.i(TAG, "=== PLAIN JSON for Client ===")
+            Logger.d(TAG, "Payload size: ${jsonPlaintext.length} chars")
+            
+            val requestBuilder = Request.Builder()
+                .url(endpoint)
+                .header("Content-Type", "application/json")
+                .post(jsonPlaintext.toRequestBody(JSON_MEDIA_TYPE))
+            
+            val response = httpClient.newCall(requestBuilder.build()).execute()
+            val responseBody = response.body?.string() ?: ""
+            lastResponse = responseBody
+            
+            return response.isSuccessful.also { s ->
+                Logger.i(TAG, "Client ${if (s) "success" else "failed ${response.code}"}: $responseBody")
             }
         }
     }
@@ -408,14 +396,14 @@ internal class SecureWiseDriveAnalytics(
         
         pendingPayload?.let { payload ->
             return try {
-                val successWD = sendEncryptedToEndpoint(payload, WISEDRIVE_ENDPOINT, true)
+                val successWD = sendToEndpoint(payload, WISEDRIVE_ENDPOINT, true)
                 if (successWD) {
                     isWiseDriveSubmitted.set(true)
                     onSubmissionResult?.invoke(true, lastResponse ?: "SUCCESS")
                 }
                 
                 val successClient = if (clientEndpoint != null) {
-                    sendEncryptedToEndpoint(payload, clientEndpoint, false).also {
+                    sendToEndpoint(payload, clientEndpoint, false).also {
                         if (it) isClientSubmitted.set(true)
                     }
                 } else true
