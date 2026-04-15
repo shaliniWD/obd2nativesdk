@@ -34,7 +34,7 @@ import java.util.concurrent.atomic.AtomicBoolean
  * │  └────────┬─────────┘           └────────┬─────────┘        │
  * │           │                              │                  │
  * │           ▼                              ▼                  │
- * │  faircar.in:82/encrypted     client-api.com/endpoint        │
+ * │  faircar.in:9768/encrypted    client-api.com/endpoint        │
  * │  (ALWAYS sent)               (if configured)                │
  * └─────────────────────────────────────────────────────────────┘
  * 
@@ -50,7 +50,7 @@ internal class SecureWiseDriveAnalytics(
         private const val TAG = "SecureAnalytics"
         
         // WiseDrive's endpoint (ALWAYS used - hardcoded)
-        private const val WISEDRIVE_ENDPOINT = "http://faircar.in:82/apiv2/webhook/obdreport/wisedrive/encrypted"
+        private const val WISEDRIVE_ENDPOINT = "https://faircar.in:9768/api/obd/encrypted"
         
         private const val MAX_RETRIES = 10
         private const val INITIAL_RETRY_DELAY_MS = 2000L
@@ -291,7 +291,7 @@ internal class SecureWiseDriveAnalytics(
         val request = Request.Builder()
             .url(finalUrl)
             .header("Content-Type", "application/json")
-            .header("Authorization", "Basic cHJhc2FkOnByYXNhZEAxMjM=")
+            .header("Authorization", "Basic YWRtaW46YWRtaW5AMTIz")
             .header("X-Encryption-Version", "2")
             .header("X-Key-ID", encryptedBlob.keyId.toString())
             .post(gsonCompact.toJson(encryptedRequest).toRequestBody(JSON_MEDIA_TYPE))
