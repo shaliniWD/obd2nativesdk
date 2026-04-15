@@ -3,6 +3,7 @@ package com.wisedrive.obd2.protocol
 import com.wisedrive.obd2.adapter.BluetoothAdapterInterface
 import com.wisedrive.obd2.constants.ManufacturerECUs
 import com.wisedrive.obd2.models.*
+import com.wisedrive.obd2.security.ObfuscatedProtocol
 import com.wisedrive.obd2.util.Logger
 import kotlinx.coroutines.*
 
@@ -25,22 +26,13 @@ class ELM327Service(private val adapter: BluetoothAdapterInterface) {
         private const val MAX_RETRIES = 3
     }
 
-    // Initialization commands - EXACT sequence from production SDK
-    private val initCommands = listOf(
-        InitCommand("ATZ", "Reset ELM327"),
-        InitCommand("ATE0", "Echo OFF"),
-        InitCommand("ATL1", "Linefeeds ON (for multi-ECU parsing)"),
-        InitCommand("ATS1", "Spaces ON (for hex parsing)"),
-        InitCommand("ATH1", "Headers ON - CRITICAL: shows ECU IDs like 7E8, 7E9"),
-        InitCommand("ATCAF1", "CAN Auto Formatting"),
-        InitCommand("ATAT2", "Adaptive Timing - Aggressive"),
-        InitCommand("ATST FF", "Max response timeout 1020ms (all ECUs respond)"),
-        InitCommand("ATAL", "Allow Long Messages (ISO-TP multi-frame)"),
-        InitCommand("ATCFC1", "CAN Flow Control ON (prevents BUFFER FULL)"),
-        InitCommand("ATSP0", "Auto Protocol Detection"),
-        InitCommand("ATDPN", "Detect Protocol Number"),
-        InitCommand("0100", "ECU Capability Check (wake up bus)")
-    )
+    // Initialization sequence loaded from obfuscated protocol store
+    // No plaintext AT commands in decompiled code
+    private val initCommands: List<InitCommand> by lazy {
+        ObfuscatedProtocol.getInitSequence().map { (cmd, desc) ->
+            InitCommand(cmd, desc)
+        }
+    }
 
     private var currentProtocol: String = "Unknown"
     private val ecuResponses = ConcurrentLinkedQueue<RawECUResponse>()
@@ -74,7 +66,7 @@ class ELM327Service(private val adapter: BluetoothAdapterInterface) {
             steps.add(step)
             
             // Special handling for ATDPN - extract protocol
-            if (cmd.command == "ATDPN" && step.status == StepStatus.SUCCESS) {
+            if (cmd.command == ObfuscatedProtocol.atdpn() && step.status == StepStatus.SUCCESS) {
                 currentProtocol = parseProtocol(step.response ?: "")
                 Logger.i(TAG, "Detected protocol: $currentProtocol")
             }
@@ -191,7 +183,7 @@ class ELM327Service(private val adapter: BluetoothAdapterInterface) {
         val startTime = System.currentTimeMillis()
         
         // Clear buffer with dummy command
-        sendCommandQuiet("AT")
+        sendCommandQuiet(ObfuscatedProtocol.at())
         
         val response = sendCommand(mode)
         val duration = System.currentTimeMillis() - startTime
@@ -209,7 +201,7 @@ class ELM327Service(private val adapter: BluetoothAdapterInterface) {
      * Read MIL Status (Mode 01 PID 01)
      */
     suspend fun readMILStatus(): MILStatusResult = withContext(Dispatchers.IO) {
-        val response = sendCommand("0101")
+        val response = sendCommand(ObfuscatedProtocol.milStatus())
         
         // Parse response: find "41 01" marker
         val cleaned = cleanResponse(response)
@@ -245,7 +237,7 @@ class ELM327Service(private val adapter: BluetoothAdapterInterface) {
      * Fetch VIN (Mode 09 PID 02)
      */
     suspend fun fetchVIN(): VINResult = withContext(Dispatchers.IO) {
-        val response = sendCommand("0902")
+        val response = sendCommand(ObfuscatedProtocol.vinRequest())
         
         // VIN is 17 ASCII characters spread across multi-frame ISO-TP response
         val vin = parseVIN(response)
@@ -311,14 +303,14 @@ class ELM327Service(private val adapter: BluetoothAdapterInterface) {
         withContext(Dispatchers.IO) {
             // Set header if specific ECU
             if (ecuAddress != null) {
-                sendCommand("ATSH $ecuAddress")
+                sendCommand(ObfuscatedProtocol.atshCmd(ecuAddress))
             }
             
-            val response = sendCommand("1902FF")
+            val response = sendCommand(ObfuscatedProtocol.udsReadDTC())
             
             // Reset header
             if (ecuAddress != null) {
-                sendCommand("ATSH 7DF")
+                sendCommand(ObfuscatedProtocol.atshBroadcast())
             }
             
             EnhancedDTCResult(
@@ -334,38 +326,38 @@ class ELM327Service(private val adapter: BluetoothAdapterInterface) {
     suspend fun readEnhancedDTCsAdvanced(ecuAddress: String? = null): EnhancedDTCResult = 
         withContext(Dispatchers.IO) {
             if (ecuAddress != null) {
-                sendCommand("ATSH $ecuAddress")
+                sendCommand(ObfuscatedProtocol.atshCmd(ecuAddress))
             }
             
-            var response = sendCommand("1902FF")
+            var response = sendCommand(ObfuscatedProtocol.udsReadDTC())
             var bufferFull = false
             
             // Check for BUFFER FULL
-            if (response.contains("BUFFER FULL", ignoreCase = true)) {
+            if (response.contains(ObfuscatedProtocol.bufferFull(), ignoreCase = true)) {
                 bufferFull = true
                 Logger.w(TAG, "BUFFER FULL detected, trying fallback status masks")
                 
                 // Fallback 1: Try status mask 0x08 (confirmed DTCs only)
-                response = sendCommand("190208")
+                response = sendCommand(ObfuscatedProtocol.udsConfirmedDTC())
                 
-                if (response.contains("BUFFER FULL", ignoreCase = true)) {
+                if (response.contains(ObfuscatedProtocol.bufferFull(), ignoreCase = true)) {
                     // Fallback 2: Try status mask 0x04
-                    response = sendCommand("190204")
+                    response = sendCommand(ObfuscatedProtocol.udsStatus04())
                 }
                 
-                if (response.contains("BUFFER FULL", ignoreCase = true)) {
+                if (response.contains(ObfuscatedProtocol.bufferFull(), ignoreCase = true)) {
                     // Fallback 3: Try status mask 0x80
-                    response = sendCommand("190280")
+                    response = sendCommand(ObfuscatedProtocol.udsStatus80())
                 }
                 
-                if (response.contains("BUFFER FULL", ignoreCase = true)) {
+                if (response.contains(ObfuscatedProtocol.bufferFull(), ignoreCase = true)) {
                     // Fallback 4: Try sub-function 0x0F (first confirmed DTC)
-                    response = sendCommand("190F")
+                    response = sendCommand(ObfuscatedProtocol.udsFirstDTC())
                 }
             }
             
             if (ecuAddress != null) {
-                sendCommand("ATSH 7DF")
+                sendCommand(ObfuscatedProtocol.atshBroadcast())
             }
             
             EnhancedDTCResult(
@@ -406,13 +398,13 @@ class ELM327Service(private val adapter: BluetoothAdapterInterface) {
             
             try {
                 // Set CAN header to target specific ECU
-                sendCommand("ATSH ${module.txId}")
+                sendCommand(ObfuscatedProtocol.atshCmd(module.txId))
                 
                 // Set CAN receive address filter
-                sendCommand("ATCRA ${module.rxId}")
+                sendCommand(ObfuscatedProtocol.atcraCmd(module.rxId))
                 
                 // Send UDS ReadDTCInformation request
-                val response = sendCommand("1902FF")
+                val response = sendCommand(ObfuscatedProtocol.udsReadDTC())
                 rawResponses[module.name] = response
                 
                 // Parse UDS response for DTCs
@@ -435,8 +427,8 @@ class ELM327Service(private val adapter: BluetoothAdapterInterface) {
         }
         
         // Reset headers back to default
-        sendCommand("ATSH 7DF")
-        sendCommand("ATCRA")
+        sendCommand(ObfuscatedProtocol.atshBroadcast())
+        sendCommand(ObfuscatedProtocol.atcra())
         
         // Deduplicate DTCs (same code from multiple ECUs → keep first)
         val uniqueDTCs = allDTCs.distinctBy { it.code }
@@ -590,9 +582,9 @@ class ELM327Service(private val adapter: BluetoothAdapterInterface) {
         
         for (module in commonModules) {
             try {
-                sendCommand("ATSH ${module.txId}")
-                sendCommand("ATCRA ${module.rxId}")
-                val response = sendCommand("1902FF")
+                sendCommand(ObfuscatedProtocol.atshCmd(module.txId))
+                sendCommand(ObfuscatedProtocol.atcraCmd(module.rxId))
+                val response = sendCommand(ObfuscatedProtocol.udsReadDTC())
                 val dtcs = parseUDSResponse(response)
                 dtcs.forEach { it.ecuSource = module.name }
                 results.add(ModuleScanResult(module.name, module.txId, dtcs, response))
@@ -603,8 +595,8 @@ class ELM327Service(private val adapter: BluetoothAdapterInterface) {
         }
         
         // Reset headers
-        sendCommand("ATSH 7DF")
-        sendCommand("ATCRA")
+        sendCommand(ObfuscatedProtocol.atshBroadcast())
+        sendCommand(ObfuscatedProtocol.atcra())
         
         results
     }
@@ -653,8 +645,8 @@ class ELM327Service(private val adapter: BluetoothAdapterInterface) {
 
     private fun cleanResponse(response: String): String {
         return response
-            .replace("SEARCHING...", "")
-            .replace("BUS INIT...", "")
+            .replace(ObfuscatedProtocol.searching(), "")
+            .replace(ObfuscatedProtocol.busInit(), "")
             .replace(">", "")
             .replace("\r\r", "\r")
             .trim()
@@ -664,8 +656,8 @@ class ELM327Service(private val adapter: BluetoothAdapterInterface) {
         val cleaned = cleanResponse(response)
         return cleaned.isNotEmpty() && 
                !cleaned.contains("?") && 
-               !cleaned.contains("NO DATA", ignoreCase = true) &&
-               !cleaned.contains("UNABLE TO CONNECT", ignoreCase = true) &&
-               !cleaned.contains("CAN ERROR", ignoreCase = true)
+               !cleaned.contains(ObfuscatedProtocol.noData(), ignoreCase = true) &&
+               !cleaned.contains(ObfuscatedProtocol.unableToConnect(), ignoreCase = true) &&
+               !cleaned.contains(ObfuscatedProtocol.canError(), ignoreCase = true)
     }
 }

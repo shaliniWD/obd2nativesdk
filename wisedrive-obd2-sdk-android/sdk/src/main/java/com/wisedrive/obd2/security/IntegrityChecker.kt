@@ -4,14 +4,25 @@ import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.os.Build
+import android.os.Debug
 import com.wisedrive.obd2.util.Logger
+import java.io.BufferedReader
 import java.io.File
+import java.io.InputStreamReader
 import java.net.Socket
 
 /**
  * Integrity Checker - Anti-tampering and anti-reverse-engineering
  * 
- * Checks for: debuggable apps, emulators, root, Frida, Xposed, repackaged APKs
+ * Comprehensive detection for:
+ * - Debuggable apps / attached debuggers
+ * - Emulators (20+ indicators)
+ * - Root access (multiple su paths)
+ * - Frida server / Frida gadget
+ * - Xposed / LSPosed / EdXposed frameworks
+ * - Dynamic instrumentation (ptrace detection)
+ * - Repackaged/modified APKs
+ * - Magisk Hide
  */
 object IntegrityChecker {
 
@@ -34,28 +45,40 @@ object IntegrityChecker {
             failedChecks.add("Debuggable build detected")
         }
         
-        // 2. Check for emulator
+        // 2. Check for attached debugger
+        if (isDebuggerAttached()) {
+            failedChecks.add("Debugger attached")
+        }
+        
+        // 3. Check for emulator
         if (isEmulator()) {
             failedChecks.add("Emulator detected")
         }
         
-        // 3. Check for root
+        // 4. Check for root
         if (isRooted()) {
             failedChecks.add("Root access detected")
         }
         
-        // 4. Check for Frida
+        // 5. Check for Frida (multiple detection methods)
         if (isFridaRunning()) {
             failedChecks.add("Frida detected")
         }
         
-        // 5. Check for Xposed
+        // 6. Check for Xposed/LSPosed
         if (isXposedInstalled(context)) {
             failedChecks.add("Xposed framework detected")
         }
         
-        // 6. Verify APK signature (optional - requires expected signature hash)
-        // This check is typically done against a known good signature
+        // 7. Check for hooking frameworks via /proc/self/maps
+        if (isHookingLibraryLoaded()) {
+            failedChecks.add("Hooking library detected in process memory")
+        }
+        
+        // 8. Check for Magisk
+        if (isMagiskPresent()) {
+            failedChecks.add("Magisk detected")
+        }
         
         val isSecure = failedChecks.isEmpty()
         
@@ -66,6 +89,13 @@ object IntegrityChecker {
         }
         
         return IntegrityResult(isSecure, failedChecks)
+    }
+
+    /**
+     * Check if a debugger is actively attached
+     */
+    private fun isDebuggerAttached(): Boolean {
+        return Debug.isDebuggerConnected() || Debug.waitingForDebugger()
     }
 
     /**
@@ -143,19 +173,54 @@ object IntegrityChecker {
     }
 
     /**
-     * Check if Frida server is running
+     * Check if Frida server is running (multiple detection methods)
      */
     private fun isFridaRunning(): Boolean {
-        // Default Frida server port
-        val fridaPort = 27042
-        
-        return try {
-            val socket = Socket("127.0.0.1", fridaPort)
-            socket.close()
-            true
-        } catch (e: Exception) {
-            false
+        // Method 1: Default Frida server port
+        val fridaPorts = listOf(27042, 27043)
+        for (port in fridaPorts) {
+            try {
+                val socket = Socket("127.0.0.1", port)
+                socket.close()
+                return true
+            } catch (_: Exception) {}
         }
+        
+        // Method 2: Check for frida-server in running processes
+        try {
+            val process = Runtime.getRuntime().exec("ps")
+            val reader = BufferedReader(InputStreamReader(process.inputStream))
+            var line: String?
+            while (reader.readLine().also { line = it } != null) {
+                if (line?.contains("frida") == true) {
+                    reader.close()
+                    return true
+                }
+            }
+            reader.close()
+        } catch (_: Exception) {}
+        
+        // Method 3: Check for frida-gadget loaded in memory
+        try {
+            val maps = File("/proc/self/maps")
+            if (maps.exists()) {
+                val content = maps.readText()
+                if (content.contains("frida") || content.contains("gadget")) {
+                    return true
+                }
+            }
+        } catch (_: Exception) {}
+        
+        // Method 4: Check for frida named pipes
+        val fridaPipes = listOf(
+            "/data/local/tmp/frida-server",
+            "/data/local/tmp/re.frida.server"
+        )
+        for (pipe in fridaPipes) {
+            if (File(pipe).exists()) return true
+        }
+        
+        return false
     }
 
     /**
@@ -194,12 +259,6 @@ object IntegrityChecker {
         return false
     }
 
-    /**
-     * Verify APK signature matches expected
-     * @param context Application context
-     * @param expectedSignatureHash SHA-256 hash of expected signing certificate
-     */
-    @Suppress("DEPRECATION")
     fun verifySignature(context: Context, expectedSignatureHash: String): Boolean {
         return try {
             val packageInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
@@ -235,5 +294,56 @@ object IntegrityChecker {
             Logger.e(TAG, "Signature verification failed: ${e.message}")
             false
         }
+    }
+
+    /**
+     * Check for hooking libraries loaded in process memory
+     * Reads /proc/self/maps for known hooking frameworks
+     */
+    private fun isHookingLibraryLoaded(): Boolean {
+        val suspiciousLibs = listOf(
+            "substrate", "cydia", "xhook", "whale",
+            "epic", "pine", "sandhook", "dobby",
+            "shadowhook", "bhook", "bytehook"
+        )
+        
+        try {
+            val maps = File("/proc/self/maps")
+            if (maps.exists()) {
+                val content = maps.readText().lowercase()
+                for (lib in suspiciousLibs) {
+                    if (content.contains(lib)) return true
+                }
+            }
+        } catch (_: Exception) {}
+        
+        return false
+    }
+
+    /**
+     * Check for Magisk (root hiding framework)
+     */
+    private fun isMagiskPresent(): Boolean {
+        val magiskIndicators = listOf(
+            "/sbin/.magisk",
+            "/data/adb/magisk",
+            "/data/adb/modules",
+            "/system/xbin/magisk"
+        )
+        
+        for (path in magiskIndicators) {
+            if (File(path).exists()) return true
+        }
+        
+        // Check for MagiskHide/Zygisk in process props
+        try {
+            val process = Runtime.getRuntime().exec("getprop ro.boot.vbmeta.device_state")
+            val reader = BufferedReader(InputStreamReader(process.inputStream))
+            val result = reader.readLine()?.trim()
+            reader.close()
+            if (result == "unlocked") return true
+        } catch (_: Exception) {}
+        
+        return false
     }
 }

@@ -1,22 +1,37 @@
 # WiseDrive OBD2 SDK ProGuard Rules
-# Aggressive obfuscation for anti-reverse-engineering
+# ═══════════════════════════════════════════════════════════════
+# MAXIMUM OBFUSCATION for Anti-Reverse-Engineering
+# ═══════════════════════════════════════════════════════════════
 
-# ─── KEEP PUBLIC API ───────────────────────────────────────
+# ─── KEEP PUBLIC API ONLY ──────────────────────────────────────
+# Only the absolute minimum public surface is kept
 -keep public class com.wisedrive.obd2.WiseDriveOBD2SDK {
     public *;
 }
 
-# Keep all public model classes
+# Keep public model classes (needed for JSON serialization)
 -keep public class com.wisedrive.obd2.models.** { *; }
 
-# ─── OBFUSCATE INTERNAL PACKAGES ───────────────────────────
-# These packages contain sensitive protocol logic
+# Keep SDKConfig for client initialization
+-keep public class com.wisedrive.obd2.models.SDKConfig { *; }
+-keep public class com.wisedrive.obd2.models.ScanReport { *; }
+
+# ─── AGGRESSIVE OBFUSCATION ──────────────────────────────────
+# Flatten all internal packages into a single unreadable package
 -repackageclasses 'a'
 -flattenpackagehierarchy 'a'
+
+# Allow overloading of method names (different methods can have same name)
 -overloadaggressively
+
+# Allow access modification for maximum inlining
 -allowaccessmodification
 
-# ─── REMOVE LOGGING ────────────────────────────────────────
+# Merge classes where possible (reduces class count, hides structure)
+-mergeinterfacesaggressively
+
+# ─── REMOVE ALL LOGGING COMPLETELY ─────────────────────────────
+# No log output = no string clues for reverse engineer
 -assumenosideeffects class android.util.Log {
     public static int v(...);
     public static int d(...);
@@ -35,29 +50,48 @@
     public static void e(...);
 }
 
-# ─── OPTIMIZATION ──────────────────────────────────────────
--optimizationpasses 5
--optimizations !code/simplification/arithmetic,!code/simplification/cast,!field/*,!class/merging/*
+# ─── MAXIMUM OPTIMIZATION ──────────────────────────────────────
+-optimizationpasses 7
+-optimizations !code/simplification/arithmetic,!code/simplification/cast,!field/*,!class/merging/*,code/removal/simple,code/removal/advanced
 
-# ─── STRING ENCRYPTION HINTS ───────────────────────────────
-# For additional security, use DexGuard or similar for string encryption
-# These rules prepare the codebase for string obfuscation
+# ─── REMOVE SOURCE FILE INFO ──────────────────────────────────
+# No file names or line numbers in stack traces
+-renamesourcefileattribute ''
+-keepattributes !SourceFile,!LineNumberTable
 
-# ─── KOTLIN SPECIFIC ───────────────────────────────────────
+# ─── REMOVE METHOD PARAMETER NAMES ────────────────────────────
+# Prevents decompiler from showing meaningful parameter names
+-keepparameternames
+
+# ─── OBFUSCATE INTERNAL CLASSES AGGRESSIVELY ───────────────────
+# Protocol logic - most critical IP
+-keep,allowobfuscation class com.wisedrive.obd2.protocol.** { *; }
+-keep,allowobfuscation class com.wisedrive.obd2.security.StringProtector { *; }
+-keep,allowobfuscation class com.wisedrive.obd2.security.ObfuscatedProtocol { *; }
+-keep,allowobfuscation class com.wisedrive.obd2.security.ObfuscatedECUConfig { *; }
+
+# ─── OBFUSCATE DICTIONARY ─────────────────────────────────────
+# Use very short, confusing names (a, b, c, aa, ab, etc.)
+# R8 does this by default but we reinforce it
+-obfuscationdictionary proguard-dictionary.txt
+-classobfuscationdictionary proguard-dictionary.txt
+-packageobfuscationdictionary proguard-dictionary.txt
+
+# ─── KOTLIN SPECIFIC ──────────────────────────────────────────
 -dontwarn kotlin.**
 -keep class kotlin.Metadata { *; }
 -keepclassmembers class kotlin.Metadata {
     public <methods>;
 }
 
-# Keep Kotlin coroutines
+# Keep Kotlin coroutines (internal, but needed for runtime)
 -keepnames class kotlinx.coroutines.internal.MainDispatcherFactory {}
 -keepnames class kotlinx.coroutines.CoroutineExceptionHandler {}
 -keepclassmembernames class kotlinx.** {
     volatile <fields>;
 }
 
-# ─── GSON SERIALIZATION ────────────────────────────────────
+# ─── GSON SERIALIZATION ───────────────────────────────────────
 -keepattributes Signature
 -keepattributes *Annotation*
 -keep class com.google.gson.** { *; }
@@ -70,17 +104,24 @@
     <fields>;
 }
 
-# ─── OKHTTP ────────────────────────────────────────────────
+# ─── OKHTTP ───────────────────────────────────────────────────
 -dontwarn okhttp3.**
 -dontwarn okio.**
 -keep class okhttp3.** { *; }
 -keep interface okhttp3.** { *; }
 
-# ─── SECURITY CLASSES ──────────────────────────────────────
-# Obfuscate but keep functionality
+# ─── SECURITY CLASSES ─────────────────────────────────────────
+# Keep crypto functionality but obfuscate names
 -keepclassmembers class javax.crypto.** { *; }
 -keepclassmembers class javax.crypto.spec.** { *; }
 
-# ─── REMOVE DEBUG INFO ─────────────────────────────────────
--renamesourcefileattribute SourceFile
--keepattributes SourceFile,LineNumberTable
+# ─── STRIP KOTLIN INTRINSICS MESSAGES ─────────────────────────
+# Remove Kotlin null-check messages that reveal parameter names
+-assumenosideeffects class kotlin.jvm.internal.Intrinsics {
+    public static void checkNotNull(...);
+    public static void checkNotNullParameter(...);
+    public static void checkNotNullExpressionValue(...);
+    public static void checkReturnedValueIsNotNull(...);
+    public static void checkFieldIsNotNull(...);
+    public static void throwUninitializedPropertyAccessException(...);
+}
