@@ -119,11 +119,21 @@ publishing {
     
     repositories {
         maven {
-            name = "JFrogArtifactory"
-            // TODO: Replace YOUR_DOMAIN with your actual JFrog domain
-            url = uri("https://YOUR_DOMAIN.jfrog.io/artifactory/wisedrive-sdk-releases")
+            name = "JFrogSnapshots"
+            url = uri("https://wisedrive.jfrog.io/artifactory/wisedrive-sdk-snapshots")
             credentials {
-                // Set these via environment variables or local.properties
+                username = System.getenv("JFROG_USER") 
+                    ?: project.findProperty("jfrog.user")?.toString() 
+                    ?: ""
+                password = System.getenv("JFROG_TOKEN") 
+                    ?: project.findProperty("jfrog.token")?.toString() 
+                    ?: ""
+            }
+        }
+        maven {
+            name = "JFrogReleases"
+            url = uri("https://wisedrive.jfrog.io/artifactory/wisedrive-sdk-releases")
+            credentials {
                 username = System.getenv("JFROG_USER") 
                     ?: project.findProperty("jfrog.user")?.toString() 
                     ?: ""

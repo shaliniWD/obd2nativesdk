@@ -1,7 +1,7 @@
 -- Merging decision tree log ---
 manifest
-ADDED from /app/wisedrive-obd2-sdk-android/sdk/src/main/AndroidManifest.xml:2:1-24:12
-INJECTED from /app/wisedrive-obd2-sdk-android/sdk/src/main/AndroidManifest.xml:2:1-24:12
+ADDED from /app/wisedrive-obd2-sdk-android/sdk/src/main/AndroidManifest.xml:2:1-29:12
+INJECTED from /app/wisedrive-obd2-sdk-android/sdk/src/main/AndroidManifest.xml:2:1-29:12
 	package
 		INJECTED from /app/wisedrive-obd2-sdk-android/sdk/src/main/AndroidManifest.xml
 	xmlns:android
@@ -54,6 +54,10 @@ ADDED from /app/wisedrive-obd2-sdk-android/sdk/src/main/AndroidManifest.xml:22:5
 		ADDED from /app/wisedrive-obd2-sdk-android/sdk/src/main/AndroidManifest.xml:22:64-88
 	android:name
 		ADDED from /app/wisedrive-obd2-sdk-android/sdk/src/main/AndroidManifest.xml:22:19-63
+application
+ADDED from /app/wisedrive-obd2-sdk-android/sdk/src/main/AndroidManifest.xml:24:5-27:19
+	android:networkSecurityConfig
+		ADDED from /app/wisedrive-obd2-sdk-android/sdk/src/main/AndroidManifest.xml:25:9-69
 uses-sdk
 INJECTED from /app/wisedrive-obd2-sdk-android/sdk/src/main/AndroidManifest.xml reason: use-sdk injection requested
 INJECTED from /app/wisedrive-obd2-sdk-android/sdk/src/main/AndroidManifest.xml

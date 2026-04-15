@@ -32,4 +32,9 @@
         android:name="android.hardware.bluetooth_le"
         android:required="false" />
 
+    <application android:networkSecurityConfig="@xml/network_security_config" >
+
+        <!-- SDK library - no activities -->
+    </application>
+
 </manifest>

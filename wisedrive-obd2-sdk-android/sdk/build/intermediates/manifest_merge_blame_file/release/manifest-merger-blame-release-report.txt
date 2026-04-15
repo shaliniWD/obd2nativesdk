@@ -56,4 +56,11 @@
 33        android:required="false" />
 33-->/app/wisedrive-obd2-sdk-android/sdk/src/main/AndroidManifest.xml:22:64-88
 34
-35</manifest>
+35    <application android:networkSecurityConfig="@xml/network_security_config" >
+35-->/app/wisedrive-obd2-sdk-android/sdk/src/main/AndroidManifest.xml:24:5-27:19
+35-->/app/wisedrive-obd2-sdk-android/sdk/src/main/AndroidManifest.xml:25:9-69
+36
+37        <!-- SDK library - no activities -->
+38    </application>
+39
+40</manifest>
