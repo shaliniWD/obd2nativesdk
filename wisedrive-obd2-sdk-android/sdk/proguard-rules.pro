@@ -115,6 +115,13 @@
 -keepclassmembers class javax.crypto.** { *; }
 -keepclassmembers class javax.crypto.spec.** { *; }
 
+# ─── EXCLUDE MOCK ADAPTER FROM RELEASE ─────────────────────────
+# MockAdapter contains plaintext commands for testing only
+# Strip it completely from release builds
+-assumenosideeffects class com.wisedrive.obd2.adapter.MockAdapter {
+    *;
+}
+
 # ─── STRIP KOTLIN INTRINSICS MESSAGES ─────────────────────────
 # Remove Kotlin null-check messages that reveal parameter names
 -assumenosideeffects class kotlin.jvm.internal.Intrinsics {
