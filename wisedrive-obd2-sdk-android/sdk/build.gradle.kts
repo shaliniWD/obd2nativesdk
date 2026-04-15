@@ -1,7 +1,12 @@
 plugins {
     id("com.android.library")
     id("org.jetbrains.kotlin.android")
+    id("maven-publish")
 }
+
+// SDK Version
+val sdkVersionName = "2.0.0"
+val sdkVersionCode = 200
 
 android {
     namespace = "com.wisedrive.obd2"
@@ -13,6 +18,10 @@ android {
         
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles("consumer-rules.pro")
+        
+        // Add version info to BuildConfig
+        buildConfigField("String", "SDK_VERSION", "\"$sdkVersionName\"")
+        buildConfigField("int", "SDK_VERSION_CODE", "$sdkVersionCode")
     }
 
     buildTypes {
@@ -36,6 +45,16 @@ android {
     kotlinOptions {
         jvmTarget = "1.8"
     }
+    
+    buildFeatures {
+        buildConfig = true
+    }
+    
+    publishing {
+        singleVariant("release") {
+            withSourcesJar()
+        }
+    }
 }
 
 dependencies {
@@ -52,4 +71,66 @@ dependencies {
     testImplementation("io.mockk:mockk:1.13.8")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
+}
+
+// ============================================================
+// MAVEN PUBLISHING CONFIGURATION
+// ============================================================
+
+publishing {
+    publications {
+        register<MavenPublication>("release") {
+            groupId = "com.wisedrive"
+            artifactId = "obd2-sdk"
+            version = sdkVersionName
+            
+            afterEvaluate {
+                from(components["release"])
+            }
+            
+            pom {
+                name.set("WiseDrive OBD2 SDK")
+                description.set("Android SDK for OBD-II vehicle diagnostics with military-grade encryption")
+                url.set("https://wisedrive.in/sdk")
+                
+                licenses {
+                    license {
+                        name.set("WiseDrive Commercial License")
+                        url.set("https://wisedrive.in/sdk/license")
+                    }
+                }
+                
+                developers {
+                    developer {
+                        id.set("wisedrive")
+                        name.set("WiseDrive Technologies")
+                        email.set("sdk@wisedrive.in")
+                    }
+                }
+                
+                scm {
+                    connection.set("scm:git:git://github.com/wisedrive/obd2-sdk-android.git")
+                    developerConnection.set("scm:git:ssh://github.com/wisedrive/obd2-sdk-android.git")
+                    url.set("https://github.com/wisedrive/obd2-sdk-android")
+                }
+            }
+        }
+    }
+    
+    repositories {
+        maven {
+            name = "JFrogArtifactory"
+            // TODO: Replace YOUR_DOMAIN with your actual JFrog domain
+            url = uri("https://YOUR_DOMAIN.jfrog.io/artifactory/wisedrive-sdk-releases")
+            credentials {
+                // Set these via environment variables or local.properties
+                username = System.getenv("JFROG_USER") 
+                    ?: project.findProperty("jfrog.user")?.toString() 
+                    ?: ""
+                password = System.getenv("JFROG_TOKEN") 
+                    ?: project.findProperty("jfrog.token")?.toString() 
+                    ?: ""
+            }
+        }
+    }
 }

@@ -1,0 +1,9 @@
+# WiseDrive SDK - JFrog Credentials
+# ===================================
+# DO NOT COMMIT THIS FILE TO GIT!
+# Add to .gitignore: local.properties
+
+# JFrog Artifactory Credentials
+# Replace with your actual values from JFrog
+jfrog.user=your-email@wisedrive.in
+jfrog.token=YOUR_GENERATED_TOKEN_HERE
