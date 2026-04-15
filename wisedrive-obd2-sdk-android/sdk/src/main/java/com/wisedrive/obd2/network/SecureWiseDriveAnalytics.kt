@@ -49,8 +49,9 @@ internal class SecureWiseDriveAnalytics(
     companion object {
         private const val TAG = "SecureAnalytics"
         
-        // WiseDrive's endpoint (ALWAYS used - hardcoded)
+        // WiseDrive's endpoints (ALWAYS used - hardcoded)
         private const val WISEDRIVE_ENDPOINT = "https://faircar.in:9768/api/obd/encrypted"
+        private const val WISEDRIVE_AUTH_ENDPOINT = "https://faircar.in:9768/api/auth/login"
         
         private const val MAX_RETRIES = 10
         private const val INITIAL_RETRY_DELAY_MS = 2000L
@@ -67,6 +68,10 @@ internal class SecureWiseDriveAnalytics(
         .readTimeout(30, TimeUnit.SECONDS)
         .writeTimeout(30, TimeUnit.SECONDS)
         .build()
+
+    // JWT token for WiseDrive internal API
+    @Volatile
+    private var wiseDriveAuthToken: String? = null
 
     private var retryJob: Job? = null
     private val isWiseDriveSubmitted = AtomicBoolean(false)
@@ -91,6 +96,43 @@ internal class SecureWiseDriveAnalytics(
         
         if (clientEndpoint != null) {
             Logger.i(TAG, "Client endpoint configured: $clientEndpoint")
+        }
+    }
+
+    /**
+     * Authenticate with WiseDrive internal API and obtain JWT token.
+     * Called automatically before first submission.
+     */
+    private fun authenticateWiseDrive(): Boolean {
+        try {
+            val authBody = gsonCompact.toJson(mapOf(
+                "username" to "partner_api",
+                "password" to "Partner@2025!"
+            ))
+            
+            val request = Request.Builder()
+                .url(WISEDRIVE_AUTH_ENDPOINT)
+                .header("Content-Type", "application/json")
+                .post(authBody.toRequestBody(JSON_MEDIA_TYPE))
+                .build()
+            
+            val response = httpClient.newCall(request).execute()
+            val responseBody = response.body?.string() ?: ""
+            
+            if (response.isSuccessful) {
+                val authResponse: Map<String, Any> = gsonCompact.fromJson(responseBody, Map::class.java) as Map<String, Any>
+                wiseDriveAuthToken = authResponse["token"]?.toString()
+                if (wiseDriveAuthToken != null) {
+                    Logger.i(TAG, "WiseDrive authentication successful")
+                    return true
+                }
+            }
+            
+            Logger.e(TAG, "WiseDrive authentication failed: $responseBody")
+            return false
+        } catch (e: Exception) {
+            Logger.e(TAG, "WiseDrive authentication error: ${e.message}")
+            return false
         }
     }
 
@@ -271,7 +313,7 @@ internal class SecureWiseDriveAnalytics(
         }
         
         // Build JSON wrapper for encrypted payload
-        val encryptedRequest = mapOf(
+        val encryptedRequest: Map<String, Any> = mapOf(
             "version" to encryptedBlob.version,
             "keyId" to encryptedBlob.keyId,
             "timestamp" to encryptedBlob.timestamp,
@@ -288,18 +330,53 @@ internal class SecureWiseDriveAnalytics(
         
         Logger.i(TAG, "Sending to: $finalUrl")
         
-        val request = Request.Builder()
+        // For WiseDrive: use JWT Bearer token (authenticate if needed)
+        val authHeader = if (isWiseDrive) {
+            if (wiseDriveAuthToken == null) {
+                authenticateWiseDrive()
+            }
+            "Bearer ${wiseDriveAuthToken ?: ""}"
+        } else {
+            "" // Client endpoints handle their own auth
+        }
+        
+        val requestBuilder = Request.Builder()
             .url(finalUrl)
             .header("Content-Type", "application/json")
-            .header("Authorization", "Basic YWRtaW46YWRtaW5AMTIz")
             .header("X-Encryption-Version", "2")
             .header("X-Key-ID", encryptedBlob.keyId.toString())
             .post(gsonCompact.toJson(encryptedRequest).toRequestBody(JSON_MEDIA_TYPE))
-            .build()
+        
+        if (authHeader.isNotEmpty()) {
+            requestBuilder.header("Authorization", authHeader)
+        }
+        
+        val request = requestBuilder.build()
 
         val response = httpClient.newCall(request).execute()
         val responseBody = response.body?.string() ?: ""
         lastResponse = responseBody
+        
+        // Handle token expiry for WiseDrive - re-authenticate and retry once
+        if (isWiseDrive && (response.code == 401 || response.code == 403)) {
+            Logger.w(TAG, "Token expired, re-authenticating...")
+            wiseDriveAuthToken = null
+            if (authenticateWiseDrive()) {
+                val retryRequest = requestBuilder
+                    .header("Authorization", "Bearer ${wiseDriveAuthToken ?: ""}")
+                    .build()
+                val retryResponse = httpClient.newCall(retryRequest).execute()
+                val retryBody = retryResponse.body?.string() ?: ""
+                lastResponse = retryBody
+                return retryResponse.isSuccessful.also { success ->
+                    if (success) {
+                        Logger.i(TAG, "${if (isWiseDrive) "WiseDrive" else "Client"} endpoint returned success (after re-auth): $retryBody")
+                    } else {
+                        Logger.w(TAG, "${if (isWiseDrive) "WiseDrive" else "Client"} endpoint returned ${retryResponse.code} after re-auth: $retryBody")
+                    }
+                }
+            }
+        }
         
         return response.isSuccessful.also { success ->
             if (success) {
