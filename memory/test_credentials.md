@@ -5,12 +5,12 @@
 - Auth: JWT Bearer Token
 - Login: POST https://faircar.in:9768/api/auth/login
   - username: partner_api
-  - password: Partner@2025!
+  - password: (stored in environment / ask team)
 - License plate: sent as URL parameter ?license_plate=XXX
 
 ## JFrog Artifactory
 - User: kalyan@wisedrive.in
-- Token: cmVmdGtuOjAxOjE4MDc4MTQ3ODE6ZGFDWDFMbXJuQ1VNSUpodUtDWGNwcWxza2Zn
+- Token: Set via environment variable JFROG_TOKEN or in local.properties (NOT committed to git)
 - Snapshots: https://wisedrive.jfrog.io/artifactory/wisedrive-sdk-snapshots
 - Releases: https://wisedrive.jfrog.io/artifactory/wisedrive-sdk-releases
 
