@@ -19,8 +19,8 @@ dependencyResolutionManagement {
                 val props = java.util.Properties()
                 val f = file("local.properties")
                 if (f.exists()) props.load(f.inputStream())
-                username = "obdsdktest"
-                password = props.getProperty("client.jfrog.token", "")
+                username = System.getenv("JFROG_CLIENT_USER") ?: props.getProperty("client.jfrog.user", "")
+                password = System.getenv("JFROG_CLIENT_TOKEN") ?: props.getProperty("client.jfrog.token", "")
             }
         }
     }
