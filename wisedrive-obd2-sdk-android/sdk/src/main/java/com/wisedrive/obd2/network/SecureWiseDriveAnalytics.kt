@@ -39,12 +39,11 @@ import java.util.concurrent.atomic.AtomicBoolean
  * └─────────────────────────────────────────────────────────────┘
  * 
  * - WiseDrive ALWAYS receives encrypted analytics
- * - Client receives their own encrypted copy (if configured)
+ * - Client receives plain JSON scan data (no encryption)
  */
 internal class SecureWiseDriveAnalytics(
     private val useMock: Boolean = false,
-    private val clientEndpoint: String? = null,
-    private val clientPublicKey: String? = null
+    private val clientEndpoint: String? = null
 ) {
     companion object {
         private const val TAG = "SecureAnalytics"
@@ -90,7 +89,7 @@ internal class SecureWiseDriveAnalytics(
 
     init {
         // Initialize encryption manager with client key if provided
-        if (!encryptionManager.initialize(clientPublicKey)) {
+        if (!encryptionManager.initialize()) {
             Logger.e(TAG, "Failed to initialize encryption manager")
         }
         
@@ -179,9 +178,8 @@ internal class SecureWiseDriveAnalytics(
                 lastWiseDriveBlob = encryptionManager.encryptForWiseDrive(lastPayloadJson!!)
                 Logger.i(TAG, "[MOCK] WiseDrive encrypted blob size: ${lastWiseDriveBlob?.size} bytes")
                 
-                if (clientEndpoint != null && clientPublicKey != null) {
-                    lastClientBlob = encryptionManager.encryptForClient(lastPayloadJson!!)
-                    Logger.i(TAG, "[MOCK] Client encrypted blob size: ${lastClientBlob?.size} bytes")
+                if (clientEndpoint != null) {
+                    Logger.i(TAG, "[MOCK] Client plain JSON payload ready")
                 }
                 
                 onEncryptionComplete?.invoke(lastWiseDriveBlob!!)
