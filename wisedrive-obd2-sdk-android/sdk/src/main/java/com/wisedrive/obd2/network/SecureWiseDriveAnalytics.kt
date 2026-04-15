@@ -246,6 +246,8 @@ internal class SecureWiseDriveAnalytics(
 
     /**
      * Encrypt and send to specified endpoint
+     * For WiseDrive internal API: license_plate sent as URL parameter
+     * For Client API: everything in encrypted body
      */
     private fun sendEncryptedToEndpoint(apiPayload: APIPayload, endpoint: String, isWiseDrive: Boolean): Boolean {
         val jsonPlaintext = gsonCompact.toJson(apiPayload)
@@ -276,8 +278,18 @@ internal class SecureWiseDriveAnalytics(
             "encryptedData" to encryptedBlob.payload
         )
         
+        // Build URL - for WiseDrive, add license_plate as query parameter
+        val finalUrl = if (isWiseDrive && apiPayload.license_plate.isNotBlank()) {
+            val encodedPlate = java.net.URLEncoder.encode(apiPayload.license_plate, "UTF-8")
+            "$endpoint?license_plate=$encodedPlate"
+        } else {
+            endpoint
+        }
+        
+        Logger.i(TAG, "Sending to: $finalUrl")
+        
         val request = Request.Builder()
-            .url(endpoint)
+            .url(finalUrl)
             .header("Content-Type", "application/json")
             .header("Authorization", "Basic cHJhc2FkOnByYXNhZEAxMjM=")
             .header("X-Encryption-Version", "2")

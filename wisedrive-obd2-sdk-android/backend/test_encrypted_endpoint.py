@@ -97,6 +97,7 @@ def test_encrypted_endpoint():
     
     print(f"\n{Colors.BOLD}{Colors.MAGENTA}{'='*70}")
     print(" TESTING WISEDRIVE ENCRYPTED ENDPOINT")
+    print(" (License plate as URL parameter, rest encrypted)")
     print(f"{'='*70}{Colors.END}\n")
     
     # Generate WiseDrive key pair (in production, WiseDrive provides their public key)
@@ -104,8 +105,12 @@ def test_encrypted_endpoint():
     wisedrive_public, wisedrive_private = KeyGenerator.generate_rsa_4096()
     print(f"{Colors.GREEN}✓ Keys generated{Colors.END}")
     
-    # Endpoint for encrypted data
-    encrypted_endpoint = "http://faircar.in:82/apiv2/webhook/obdreport/wisedrive/encrypted"
+    # License plate to send as URL parameter
+    license_plate = "MH12AB1234"
+    encoded_plate = requests.utils.quote(license_plate)
+    
+    # Endpoints - license_plate as query parameter for encrypted endpoint
+    encrypted_endpoint = f"http://faircar.in:82/apiv2/webhook/obdreport/wisedrive/encrypted?license_plate={encoded_plate}"
     legacy_endpoint = "http://faircar.in:82/apiv2/webhook/obdreport/wisedrive"
     
     # OBD scan data
